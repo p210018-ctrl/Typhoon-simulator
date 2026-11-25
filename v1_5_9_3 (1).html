@@ -1,0 +1,3076 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>太平洋台风与气旋模拟系统 v1.5.9.3 · 巨兽回归</title>
+<style>
+  :root {
+    --bg-deep: #040812;
+    --bg-panel: #0a1222;
+    --bg-card: #101b30;
+    --bg-hover: #172642;
+    --border: #1e3154;
+    --border-bright: #2e4b7d;
+    --text-main: #e2e8f0;
+    --text-dim: #94a3b8;
+    --text-muted: #64748b;
+    --accent: #38bdf8;
+    --green: #34d399;
+    --yellow: #facc15;
+    --orange: #fb923c;
+    --red: #ef4444;
+    --magenta: #e879f9;
+    --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+
+  html, body {
+    width: 100vw; height: 100vh; height: 100dvh;
+    max-width: 100vw; max-height: 100vh; max-height: 100dvh;
+    overflow: hidden;
+    background: var(--bg-deep);
+    color: var(--text-main);
+    font-family: var(--font-sans);
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: #060b16; }
+  ::-webkit-scrollbar-thumb { background: #22365c; border-radius: 3px; }
+
+  .tabular { font-variant-numeric: tabular-nums; font-family: var(--font-mono); }
+
+  .app-shell {
+    display: flex; flex-direction: column;
+    width: 100%; height: 100%; overflow: hidden;
+  }
+
+  /* 顶部导航栏 */
+  header.topbar {
+    height: 44px; min-height: 44px; max-height: 44px; flex-shrink: 0;
+    background: linear-gradient(90deg, #070e1c 0%, #0d182d 50%, #070e1c 100%);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 10px; gap: 8px; z-index: 25; overflow-x: auto;
+  }
+
+  .brand { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .brand-title {
+    font-weight: 800; font-size: 13px; letter-spacing: 0.3px;
+    background: linear-gradient(90deg, #38bdf8, #e879f9);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .badge-ver {
+    background: rgba(232,121,249,0.16); border: 1px solid rgba(232,121,249,0.45);
+    color: #f0abfc; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 999px;
+  }
+
+  .basin-switch {
+    display: flex; background: #050a14; border: 1px solid var(--border-bright);
+    border-radius: 7px; padding: 2px; gap: 2px; flex-shrink: 0;
+  }
+  .basin-btn {
+    padding: 3px 9px; border: none; border-radius: 5px; background: transparent;
+    color: var(--text-dim); font-size: 11px; font-weight: 700; cursor: pointer;
+    transition: all 0.15s; white-space: nowrap;
+  }
+  .basin-btn.wnp-active { background: linear-gradient(135deg,#0284c7,#1d4ed8); color:#fff; box-shadow:0 0 10px rgba(2,132,199,0.45); }
+  .basin-btn.spac-active { background: linear-gradient(135deg,#059669,#0d9488); color:#fff; box-shadow:0 0 10px rgba(16,185,129,0.45); }
+
+  .time-cluster {
+    display: flex; align-items: center; gap: 3px;
+    background: #060c18; border: 1px solid var(--border); border-radius: 7px; padding: 2px 5px;
+    flex-shrink: 0;
+  }
+  #sim-clock {
+    font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+    font-weight: 700; font-size: 11.5px; color: #f8fafc; padding: 0 5px; white-space: nowrap;
+  }
+
+  button, select, input[type="text"], textarea {
+    background: var(--bg-card); color: var(--text-main);
+    border: 1px solid var(--border); border-radius: 6px;
+    padding: 4px 8px; font-size: 11px; font-family: inherit;
+    transition: background 0.14s, border-color 0.14s;
+  }
+  button, select { cursor: pointer; white-space: nowrap; }
+  button:hover, select:hover { background: var(--bg-hover); border-color: var(--border-bright); }
+  button.active { background: #1d4ed8; border-color: #60a5fa; color: #fff; font-weight: 700; }
+  button.primary { background: linear-gradient(135deg,#0284c7,#2563eb); border-color:#38bdf8; color:#fff; font-weight:700; }
+  button.danger-active {
+    background: linear-gradient(135deg,#be123c,#9333ea); border-color:#f472b6;
+    color:#fff; font-weight:700; box-shadow:0 0 10px rgba(232,121,249,0.45);
+  }
+  .btn-group { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+
+  /* 中央工作区 */
+  .workspace { display: flex; flex: 1 1 auto; min-height: 0; min-width: 0; overflow: hidden; }
+
+  aside.sidebar-left {
+    width: 242px; min-width: 242px; max-width: 242px; flex-shrink: 0;
+    background: var(--bg-panel); border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden;
+    padding: 8px; gap: 7px;
+  }
+
+  main.map-wrapper {
+    position: relative; flex: 1 1 auto; min-width: 0; min-height: 0;
+    background: #02060f; overflow: hidden;
+  }
+  #map-canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
+
+  aside.sidebar-right {
+    width: 336px; min-width: 336px; max-width: 336px; flex-shrink: 0;
+    background: var(--bg-panel); border-left: 1px solid var(--border);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+
+  .tab-bar {
+    display: flex; border-bottom: 1px solid var(--border);
+    background: #070d19; padding: 4px; gap: 4px; flex-shrink: 0;
+  }
+  .tab-btn { flex: 1; padding: 5px 4px; font-size: 11px; font-weight: 600; text-align: center; }
+  .tab-content { flex: 1; min-height: 0; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 8px; }
+  .tab-pane { display: none; flex-direction: column; gap: 8px; }
+  .tab-pane.active { display: flex; }
+
+  .card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px;
+  }
+  .card-header {
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 11px; font-weight: 700; color: var(--accent);
+    margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid rgba(30,49,84,0.7);
+  }
+
+  .layer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+  .stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; }
+  .stat-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+
+  .stat-box {
+    background: rgba(6,12,22,0.75); border: 1px solid rgba(30,49,84,0.7);
+    border-radius: 6px; padding: 5px 6px;
+  }
+  .stat-label { font-size: 9.5px; color: var(--text-dim); }
+  .stat-val { font-size: 12.5px; font-weight: 800; font-family: var(--font-mono); margin-top: 1px; }
+  .stat-sub { font-size: 9.5px; color: var(--text-muted); margin-top: 1px; }
+
+  .storm-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 5px 7px; border-radius: 6px; background: rgba(8,15,29,0.75);
+    border: 1px solid transparent; cursor: pointer; margin-bottom: 4px;
+  }
+  .storm-item:hover { background: var(--bg-hover); }
+  .storm-item.selected { border-color: var(--accent); background: rgba(56,189,248,0.12); }
+
+  .storm-badge {
+    display: inline-block; padding: 1px 6px; border-radius: 4px;
+    font-size: 10px; font-weight: 800; color: #050a13;
+  }
+
+  .dvorak-row {
+    display: flex; justify-content: space-between; padding: 3px 0;
+    border-bottom: 1px dashed rgba(30,49,84,0.6); font-size: 11px;
+  }
+  .dvorak-row:last-child { border-bottom: none; }
+
+  .check-row {
+    display: flex; align-items: center; gap: 6px; font-size: 11px;
+    color: var(--text-dim); cursor: pointer; margin-top: 5px;
+  }
+  .check-row input { accent-color: var(--accent); cursor: pointer; }
+
+  /* 地图 HUD */
+  .map-hud-tr {
+    position: absolute; top: 8px; right: 10px;
+    display: flex; flex-direction: column; align-items: flex-end; gap: 4px; pointer-events: none;
+  }
+  .hud-pill {
+    background: rgba(6,11,20,0.86); backdrop-filter: blur(5px);
+    border: 1px solid var(--border-bright); border-radius: 6px;
+    padding: 3px 8px; font-size: 11px; color: var(--text-main);
+  }
+  .map-hud-bl {
+    position: absolute; left: 8px; bottom: 8px;
+    background: rgba(6,11,20,0.88); backdrop-filter: blur(5px);
+    border: 1px solid var(--border-bright); border-radius: 6px;
+    padding: 4px 9px; font-family: var(--font-mono); font-size: 10.5px;
+    pointer-events: none; display: flex; gap: 8px; flex-wrap: wrap;
+    max-width: calc(100% - 260px);
+  }
+
+  /* 10 级 BD 红外色阶图例条 */
+  .bd-legend {
+    position: absolute; right: 8px; bottom: 8px;
+    background: rgba(6,11,20,0.9); border: 1px solid var(--border-bright);
+    border-radius: 6px; padding: 4px 6px; pointer-events: none;
+    display: flex; flex-direction: column; gap: 3px; width: 242px;
+  }
+  .bd-legend-title { font-size: 9.5px; color: var(--text-dim); display: flex; justify-content: space-between; }
+  .bd-bar { display: flex; height: 9px; border-radius: 3px; overflow: hidden; border: 1px solid #334155; }
+  .bd-seg { flex: 1; }
+  .bd-labels { display: flex; justify-content: space-between; font-size: 8px; color: var(--text-dim); font-family: var(--font-mono); }
+
+  /* 底部实时气象新闻条 + 抽屉 */
+  footer.news-bar {
+    height: 30px; min-height: 30px; max-height: 30px; flex-shrink: 0;
+    background: #060b16; border-top: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 10px; gap: 8px; z-index: 25; position: relative;
+  }
+  .news-ticker {
+    flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    font-size: 11px; color: var(--text-main); display: flex; align-items: center; gap: 6px;
+  }
+  .news-tag {
+    font-size: 9.5px; font-weight: 800; padding: 1px 5px; border-radius: 4px;
+    background: #1d4ed8; color: #fff; flex-shrink: 0;
+  }
+  .news-drawer {
+    position: fixed; left: 10px; right: 10px; bottom: 34px; height: 240px;
+    background: rgba(8,14,27,0.97); backdrop-filter: blur(8px);
+    border: 1px solid var(--border-bright); border-radius: 10px;
+    display: none; flex-direction: column; z-index: 40; box-shadow: 0 -8px 30px rgba(0,0,0,0.65);
+  }
+  .news-drawer.open { display: flex; }
+  .news-drawer-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 7px 10px; border-bottom: 1px solid var(--border);
+  }
+  .news-list { flex: 1; overflow-y: auto; padding: 6px 10px; display: flex; flex-direction: column; gap: 4px; }
+  .news-entry {
+    display: flex; align-items: baseline; gap: 8px; font-size: 11px;
+    padding: 4px 6px; border-radius: 5px; background: rgba(16,27,48,0.65);
+    border-left: 3px solid var(--accent);
+  }
+
+  /* 表格 */
+  table.data-table { width: 100%; border-collapse: collapse; font-size: 10px; font-family: var(--font-mono); }
+  table.data-table th {
+    text-align: left; padding: 4px 3px; color: var(--text-dim);
+    border-bottom: 1px solid var(--border); background: #070d19; position: sticky; top: 0;
+  }
+  table.data-table td { padding: 3.5px 3px; border-bottom: 1px solid rgba(30,49,84,0.4); }
+  table.data-table tr:hover td { background: rgba(56,189,248,0.08); }
+
+  /* 弹窗（启动界面、台风回顾、设置中心） */
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(2,6,15,0.82); backdrop-filter: blur(6px);
+    display: none; align-items: center; justify-content: center; z-index: 60; padding: 14px;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal-box {
+    background: var(--bg-panel); border: 1px solid var(--border-bright);
+    border-radius: 12px; width: 100%; max-width: 900px; max-height: 90vh;
+    display: flex; flex-direction: column; overflow: hidden;
+    box-shadow: 0 18px 50px rgba(0,0,0,0.75);
+  }
+  .modal-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px; border-bottom: 1px solid var(--border); background: #070d19;
+  }
+  .modal-body { flex: 1; min-height: 0; overflow-y: auto; padding: 14px; }
+
+  /* 启动封面 */
+  .start-card {
+    max-width: 560px; text-align: center; padding: 24px 22px;
+    background: radial-gradient(circle at top, #10203d 0%, #091121 75%);
+  }
+  .start-title {
+    font-size: 22px; font-weight: 900; margin-bottom: 6px;
+    background: linear-gradient(90deg, #38bdf8, #818cf8, #e879f9);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .start-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 16px 0 12px; }
+  .start-actions button { padding: 10px 12px; font-size: 12.5px; font-weight: 700; }
+
+  .feature-chips {
+    display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; margin-top: 8px;
+  }
+  .chip {
+    font-size: 10px; padding: 2px 7px; border-radius: 999px;
+    background: rgba(56,189,248,0.12); border: 1px solid rgba(56,189,248,0.3); color: #bae6fd;
+  }
+
+  /* 设置网格 */
+  .color-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; }
+  .color-item {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 7px; padding: 6px 8px;
+  }
+  .audio-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 7px; padding: 6px 9px; margin-bottom: 5px;
+  }
+
+  /* Toast 提示 */
+  #toast {
+    position: fixed; top: 54px; left: 50%; transform: translateX(-50%) translateY(-10px);
+    background: rgba(14,24,45,0.96); border: 1px solid var(--accent); color: #f8fafc;
+    padding: 7px 14px; border-radius: 8px; font-size: 12px; font-weight: 600;
+    opacity: 0; pointer-events: none; transition: all 0.22s; z-index: 90;
+    box-shadow: 0 6px 22px rgba(0,0,0,0.6);
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  @media (max-width: 1024px) {
+    aside.sidebar-left { width: 205px; min-width: 205px; }
+    aside.sidebar-right { width: 290px; min-width: 290px; }
+  }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <!-- 顶部导航栏 -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-title">太平洋台风与气旋模拟系统</span>
+      <span class="badge-ver">v1.5.9.3 · 巨兽回归</span>
+    </div>
+
+    <div class="basin-switch" title="切换洋区 (快捷键 B)">
+      <button id="btn-basin-wnp" class="basin-btn wnp-active" onclick="switchBasin('WNP', this)">西北太平洋 ↺</button>
+      <button id="btn-basin-spac" class="basin-btn" onclick="switchBasin('SPAC', this)">南太平洋 ↻</button>
+    </div>
+
+    <div class="time-cluster">
+      <span id="sim-clock">2000-01-01 00Z</span>
+      <button id="btn-spd-0" class="active" onclick="setSpeed(0, this)" title="暂停/继续 (Space)">⏸</button>
+      <button id="btn-spd-1" onclick="setSpeed(1, this)" title="1倍速 (1)">1x</button>
+      <button id="btn-spd-2" onclick="setSpeed(2, this)" title="2倍速 (2)">2x</button>
+      <button id="btn-spd-3" onclick="setSpeed(3, this)" title="3倍速 (3)">3x</button>
+      <button id="btn-spd-5" onclick="setSpeed(5, this)" title="5倍速 (5)">5x</button>
+      <button onclick="stepSixHours(this)" title="单步推进6小时 (→)">+6H</button>
+    </div>
+
+    <div class="btn-group">
+      <button id="btn-disp-sat" class="active" onclick="setDisplayMode('sat', this)" title="切换显示模式 (M)">云图</button>
+      <button id="btn-disp-icon" onclick="setDisplayMode('icon', this)">图标</button>
+      <button id="btn-disp-both" onclick="setDisplayMode('both', this)">叠加</button>
+    </div>
+
+    <div class="btn-group">
+      <button onclick="openReviewModal(this)" title="台风回顾 (R)">📚 回顾</button>
+      <button onclick="openSettingsModal(this)">⚙️ 设置</button>
+      <button onclick="exportSave(this)" title="导出存档 (S)">💾 存档</button>
+      <button onclick="openStartModal(this)">🏠 菜单</button>
+    </div>
+  </header>
+
+  <!-- 主工作区 -->
+  <div class="workspace">
+    <!-- 左侧栏 -->
+    <aside class="sidebar-left">
+      <div class="card">
+        <div class="card-header">
+          <span id="left-basin-title">西北太平洋 · 年度统计</span>
+          <span id="enso-badge" class="storm-badge" style="background:#94a3b8;">中性</span>
+        </div>
+        <div class="stat-grid">
+          <div class="stat-box">
+            <div class="stat-label">本年命名</div>
+            <div class="stat-val" id="stat-named">0</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">年度 ACE</div>
+            <div class="stat-val" id="stat-ace">0.0</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px;gap:4px;">
+          <span style="font-size:10.5px;color:var(--text-dim);">ENSO 调转</span>
+          <select id="enso-select" onchange="setEnsoMode(this.value)" style="flex:1;">
+            <option value="AUTO">自动跨年循环</option>
+            <option value="ELNINO">厄尔尼诺 (El Niño)</option>
+            <option value="NEUTRAL">中性 (Neutral)</option>
+            <option value="LANINA">拉尼娜 (La Niña)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span id="active-list-title">当前活跃台风</span>
+          <span id="active-count" class="tabular" style="color:var(--text-dim);">0</span>
+        </div>
+        <div id="active-storm-list" style="max-height:150px;overflow-y:auto;">
+          <div style="color:var(--text-muted);text-align:center;padding:8px 0;">当前洋区无活跃气旋</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span>卫星与环境图层</span></div>
+        <div class="layer-grid">
+          <button id="lyr-bd" class="active" onclick="setLayer('BD', this)">BD 10级红外</button>
+          <button id="lyr-ir" onclick="setLayer('IR', this)">IR 灰阶云图</button>
+          <button id="lyr-sst" onclick="setLayer('SST', this)">海温 SST</button>
+          <button id="lyr-ohc" onclick="setLayer('OHC', this)">热含量 OHC</button>
+          <button id="lyr-vws" onclick="setLayer('VWS', this)" style="grid-column:span 2;">垂直风切 VWS</button>
+        </div>
+        <label class="check-row"><input type="checkbox" id="chk-steer" checked onchange="toggleFlag('showSteering', this.checked)"> 叠加气候驶流场流线</label>
+        <label class="check-row"><input type="checkbox" id="chk-hist-lf" onchange="toggleFlag('showYearLandfalls', this.checked)"> 显示本年历史登陆点</label>
+      </div>
+
+      <div class="card">
+        <div class="card-header" style="cursor:pointer;" onclick="toggleLabBox()">
+          <span>🧪 实验室工具</span>
+          <span id="lab-arrow">▼</span>
+        </div>
+        <div id="lab-body" style="display:flex;flex-direction:column;gap:4px;">
+          <button onclick="jumpPeakSeason(this)">⏩ 跳至当前洋区旺季</button>
+          <button id="btn-click-spawn" onclick="toggleClickSpawn(this)">🎯 点击洋面生成模式 (C)</button>
+          <button id="btn-duck-mode" onclick="toggleDuckMode(this)">🦆 疯模式：关闭</button>
+          <button onclick="spawnDuckMonster(this)">🦆 立即召唤疯模式巨兽</button>
+          <button onclick="spawnFujiwharaPair(this)">🌀 生成藤原效应双系统</button>
+          <button id="btn-outer-spawn" onclick="spawnOuterStorm(this)">🌊 召唤外洋越界台风</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- 中央地图 -->
+    <main class="map-wrapper" id="map-wrapper">
+      <canvas id="map-canvas"></canvas>
+
+      <div class="map-hud-tr">
+        <div class="hud-pill" id="hud-basin-info">西北太平洋 · 逆时针 ↺ · 2000 季</div>
+        <div class="hud-pill" id="hud-click-spawn" style="display:none;border-color:#38bdf8;color:#7dd3fc;">🎯 点击洋面生成模式（右键或 C 键退出）</div>
+        <div class="hud-pill" id="hud-duck-banner" style="display:none;border-color:#e879f9;color:#f0abfc;">🦆 疯模式激活：生成系统 100% 冲破 170 kt</div>
+        <div class="hud-pill" id="hud-hist-track" style="display:none;pointer-events:auto;cursor:pointer;border-color:#facc15;color:#fde047;" onclick="clearHighlightTrack()">★ 正在高亮历史路径（点击清除）</div>
+      </div>
+
+      <div class="map-hud-bl" id="probe-hud">
+        <span>移动鼠标探测海温 / 云顶 / 风切 / 驶流</span>
+      </div>
+
+      <div class="bd-legend" id="bd-legend">
+        <div class="bd-legend-title">
+          <span>Dvorak 红外色阶 (WMG → WCDG)</span>
+          <span>最高 T10.0</span>
+        </div>
+        <div class="bd-bar" id="bd-bar"></div>
+        <div class="bd-labels">
+          <span>WMG</span><span>OW</span><span>DG</span><span>MG</span><span>LG</span><span>B</span><span>W</span><span>CMG</span><span>CDG</span><span>WCDG</span>
+        </div>
+      </div>
+    </main>
+
+    <!-- 右侧栏 -->
+    <aside class="sidebar-right">
+      <div class="tab-bar">
+        <button class="tab-btn active" id="rtab-btn-live" onclick="switchRightTab('live', this)">实时遥测</button>
+        <button class="tab-btn" id="rtab-btn-wc" onclick="switchRightTab('wc', this)">6H 暖心剖面</button>
+        <button class="tab-btn" id="rtab-btn-hist" onclick="switchRightTab('hist', this)">历史年鉴</button>
+      </div>
+
+      <div class="tab-content">
+        <!-- Tab 1: 实时遥测 -->
+        <div class="tab-pane active" id="rtab-live">
+          <div id="live-empty" class="card" style="text-align:center;color:var(--text-muted);padding:24px 10px;">
+            点击地图或左侧列表中的活跃系统以查看实时遥测与德沃夏克分析
+          </div>
+          <div id="live-panel" style="display:none;flex-direction:column;gap:8px;">
+            <div class="card">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
+                <div style="display:flex;align-items:center;gap:5px;min-width:0;">
+                  <span id="sel-name" style="font-size:15px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">—</span>
+                  <button onclick="promptRenameSelected(this)" title="即时更名" style="padding:1px 5px;font-size:10px;">✏️</button>
+                </div>
+                <span id="sel-cat-badge" class="storm-badge">TD</span>
+              </div>
+              <div id="sel-meta" style="font-size:10.5px;color:var(--text-dim);margin-top:4px;">—</div>
+              <div id="sel-tags" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px;"></div>
+            </div>
+
+            <div class="card">
+              <div class="card-header"><span>三机构风速定强与中心气压</span><span id="sel-trend" class="tabular">—</span></div>
+              <div class="stat-grid-3">
+                <div class="stat-box">
+                  <div class="stat-label">1分钟 (JTWC)</div>
+                  <div class="stat-val" id="sel-v1" style="color:#38bdf8;">—</div>
+                  <div class="stat-sub">上限 200 kt</div>
+                </div>
+                <div class="stat-box">
+                  <div class="stat-label">2分钟 (CMA)</div>
+                  <div class="stat-val" id="sel-v2" style="color:#34d399;">—</div>
+                  <div class="stat-sub" id="sel-cma-lvl">—</div>
+                </div>
+                <div class="stat-box">
+                  <div class="stat-label">10分钟 (JMA)</div>
+                  <div class="stat-val" id="sel-v10" style="color:#facc15;">—</div>
+                  <div class="stat-sub" id="sel-jma-lvl">—</div>
+                </div>
+              </div>
+              <div class="stat-grid" style="margin-top:5px;">
+                <div class="stat-box">
+                  <div class="stat-label">中心气压 (风压耦合)</div>
+                  <div class="stat-val" id="sel-pres" style="color:#f472b6;">—</div>
+                  <div class="stat-sub" id="sel-pres-note">—</div>
+                </div>
+                <div class="stat-box">
+                  <div class="stat-label">环流规模 (10级)</div>
+                  <div class="stat-val" id="sel-circ" style="font-size:11.5px;">—</div>
+                  <div class="stat-sub" id="sel-ace-storm">ACE: 0.0</div>
+                </div>
+              </div>
+              <div class="stat-grid" style="margin-top:5px;">
+                <div class="stat-box">
+                  <div class="stat-label">台风眼结构</div>
+                  <div class="stat-val" id="sel-eye" style="font-size:11.5px;">—</div>
+                  <div class="stat-sub" id="sel-eye-km">—</div>
+                </div>
+                <div class="stat-box">
+                  <div class="stat-label">眼墙置换 (ERC)</div>
+                  <div class="stat-val" id="sel-erc" style="font-size:11.5px;">无置换</div>
+                  <div class="stat-sub" id="sel-erc-sub">结构稳定</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header"><span>德沃夏克分析法 (Dvorak · 最高 T10.0)</span><span id="dv-ci-badge" class="tabular" style="color:#fde047;">CI 1.5</span></div>
+              <div class="dvorak-row"><span>最终 T / CI 指数</span><span id="dv-tci" class="tabular">—</span></div>
+              <div class="dvorak-row"><span>DT / MET / PT 分项</span><span id="dv-sub" class="tabular">—</span></div>
+              <div class="dvorak-row"><span>云区云顶 (CDO CTT)</span><span id="dv-cdo" class="tabular">—</span></div>
+              <div class="dvorak-row"><span>风眼暖区 (Eye Temp)</span><span id="dv-eye-temp" class="tabular">—</span></div>
+              <div class="dvorak-row"><span>局地环境 (SST/OHC/VWS)</span><span id="dv-env" class="tabular">—</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 2: 6H 暖心剖面 -->
+        <div class="tab-pane" id="rtab-wc">
+          <div class="card">
+            <div class="card-header">
+              <span>每 6 小时 Warm-Core 垂直温度距平</span>
+              <span id="wc-time" class="tabular" style="color:var(--text-dim);">—</span>
+            </div>
+            <canvas id="wc-canvas" width="300" height="190" style="width:100%;height:190px;border-radius:6px;background:#040812;border:1px solid var(--border);"></canvas>
+            <div class="stat-grid" style="margin-top:6px;">
+              <div class="stat-box">
+                <div class="stat-label">暖心峰值 / 高度</div>
+                <div class="stat-val" id="wc-peak" style="font-size:11.5px;color:#fb923c;">—</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-label">风切倾斜 / 变性状态</div>
+                <div class="stat-val" id="wc-tilt" style="font-size:11.5px;">—</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><span>6H Best Track 观测记录</span></div>
+            <div style="max-height:220px;overflow-y:auto;">
+              <table class="data-table">
+                <thead><tr><th>UTC</th><th>经纬</th><th>1m/2m/10m</th><th>hPa</th><th>T</th></tr></thead>
+                <tbody id="bt-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 3: 历史年鉴 -->
+        <div class="tab-pane" id="rtab-hist">
+          <div class="card">
+            <div class="card-header">
+              <span>年度最强风王档案</span>
+              <select id="hist-year-sel" onchange="renderHistoryTab()"></select>
+            </div>
+            <div id="hist-year-king" style="font-size:11px;color:var(--text-dim);">暂无已消散的历史记录</div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><span>跨年历史 Top 10 排行榜</span></div>
+            <div style="max-height:260px;overflow-y:auto;">
+              <table class="data-table">
+                <thead><tr><th>#</th><th>年份/名称</th><th>峰值kt</th><th>气压</th><th>ACE</th></tr></thead>
+                <tbody id="hist-top10"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- 底部实时气象新闻条 -->
+  <footer class="news-bar">
+    <div class="news-ticker" id="news-ticker">
+      <span class="news-tag">实时快讯</span>
+      <span>系统初始化完成 · 当前处于 2000-01-01 00Z，按 Space 键开始模拟</span>
+    </div>
+    <button onclick="toggleNewsDrawer(this)" title="展开/收起气象新闻日志 (N)">📰 气象日志 (<span id="news-count">0</span>)</button>
+  </footer>
+</div>
+
+<!-- 实时气象新闻抽屉 -->
+<div class="news-drawer" id="news-drawer">
+  <div class="news-drawer-head">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <strong style="color:var(--accent);">📰 实时气象新闻播报日志</strong>
+      <select id="news-filter-basin" onchange="renderNewsDrawer()">
+        <option value="ALL">全部洋区</option>
+        <option value="WNP">西北太平洋</option>
+        <option value="SPAC">南太平洋</option>
+      </select>
+      <select id="news-filter-type" onchange="renderNewsDrawer()">
+        <option value="ALL">全部事件</option>
+        <option value="GEN">命名/越界</option>
+        <option value="UPG">等级突破</option>
+        <option value="ERC">眼墙置换</option>
+        <option value="LF">登陆播报</option>
+        <option value="FUJI">藤原效应</option>
+      </select>
+    </div>
+    <div class="btn-group">
+      <button onclick="clearNewsLog()">清空日志</button>
+      <button onclick="toggleNewsDrawer()">收起 ✕</button>
+    </div>
+  </div>
+  <div class="news-list" id="news-list"></div>
+</div>
+
+<!-- 启动主界面弹窗 -->
+<div class="modal-backdrop open" id="start-modal">
+  <div class="modal-box start-card">
+    <div class="badge-ver" style="display:inline-block;margin-bottom:8px;">v1.5.9.3 紧急修复稳定版 · 巨兽回归</div>
+    <div class="start-title">太平洋台风与气旋模拟系统</div>
+    <p style="color:var(--text-dim);font-size:11.5px;">西北太平洋（逆时针台风）& 南太平洋（顺时针气旋）双洋区同步大气沙盒</p>
+
+    <div class="feature-chips">
+      <span class="chip">10级红外色阶 WMG→WCDG</span>
+      <span class="chip">Dvorak 最高 T10.0</span>
+      <span class="chip">CMA 2m / JMA 10m / JTWC 1m</span>
+      <span class="chip">6H Warm-Core 暖心</span>
+      <span class="chip">实时气象新闻日志</span>
+      <span class="chip">自定义配色/命名/音效</span>
+    </div>
+
+    <div class="start-actions">
+      <button class="primary" onclick="startOrResumeSim(true)">🚀 开始 / 继续模拟</button>
+      <button onclick="triggerImportSave()">📂 导入 JSON 存档</button>
+      <button onclick="openReviewModal(); closeModal('start-modal');">📚 台风回顾页面</button>
+      <button onclick="openSettingsModal(); closeModal('start-modal');">⚙️ 设置中心</button>
+    </div>
+
+    <div style="font-size:10.5px;color:var(--text-muted);border-top:1px solid var(--border);padding-top:10px;text-align:left;line-height:1.6;">
+      <div><strong>快捷键：</strong><span class="tabular">Space</span> 暂停/继续 · <span class="tabular">1/2/3/5</span> 调速 · <span class="tabular">→</span> +6H · <span class="tabular">B</span> 切换洋区 · <span class="tabular">M</span> 云图/图标 · <span class="tabular">N</span> 气象日志 · <span class="tabular">C</span> 点击生成 · <span class="tabular">R</span> 回顾</div>
+    </div>
+    <input type="file" id="save-file-input" accept=".json" style="display:none;" onchange="handleImportSave(event)">
+  </div>
+</div>
+
+<!-- 台风回顾模态框 -->
+<div class="modal-backdrop" id="review-modal">
+  <div class="modal-box" style="max-width:980px;">
+    <div class="modal-head">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <strong style="font-size:14px;color:var(--accent);">📚 台风与气旋回顾页面</strong>
+        <select id="rev-basin" onchange="renderReviewModal()">
+          <option value="ALL">全部洋区</option>
+          <option value="WNP">西北太平洋</option>
+          <option value="SPAC">南太平洋</option>
+        </select>
+        <select id="rev-year" onchange="renderReviewModal()"></select>
+        <select id="rev-sort" onchange="renderReviewModal()">
+          <option value="wind">按巅峰风速排序</option>
+          <option value="pres">按最低气压排序</option>
+          <option value="ace">按累计 ACE 排序</option>
+          <option value="time">按生成时间排序</option>
+        </select>
+      </div>
+      <button onclick="closeModal('review-modal')">关闭 ✕</button>
+    </div>
+    <div class="modal-body" style="display:grid;grid-template-columns:300px 1fr;gap:12px;min-height:460px;">
+      <div id="rev-list" style="overflow-y:auto;max-height:68vh;display:flex;flex-direction:column;gap:5px;padding-right:4px;"></div>
+      <div id="rev-detail" style="display:flex;flex-direction:column;gap:8px;overflow-y:auto;max-height:68vh;">
+        <div style="color:var(--text-muted);text-align:center;margin-top:80px;">请从左侧选择一条历史台风/气旋档案</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 设置中心模态框 -->
+<div class="modal-backdrop" id="settings-modal">
+  <div class="modal-box" style="max-width:760px;">
+    <div class="modal-head">
+      <strong style="font-size:14px;color:var(--accent);">⚙️ 系统设置中心（命名 · 等级配色 · BGM与音效）</strong>
+      <button onclick="closeModal('settings-modal')">关闭 ✕</button>
+    </div>
+    <div class="tab-bar">
+      <button class="tab-btn active" id="stab-btn-names" onclick="switchSettingsTab('names', this)">自定义更名</button>
+      <button class="tab-btn" id="stab-btn-colors" onclick="switchSettingsTab('colors', this)">等级颜色</button>
+      <button class="tab-btn" id="stab-btn-audio" onclick="switchSettingsTab('audio', this)">BGM 与分级音效</button>
+    </div>
+    <div class="modal-body">
+      <!-- 自定义更名 -->
+      <div id="stab-names" style="display:flex;flex-direction:column;gap:10px;">
+        <div class="card">
+          <div class="card-header"><span>即时更名当前活跃系统</span></div>
+          <div id="settings-active-rename" style="display:flex;flex-direction:column;gap:5px;"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span>西北太平洋命名表（逗号分隔）</span><button onclick="resetNameList('WNP')">恢复默认</button></div>
+          <textarea id="set-wnp-names" rows="4" style="width:100%;resize:vertical;"></textarea>
+        </div>
+        <div class="card">
+          <div class="card-header"><span>南太平洋气旋命名表（逗号分隔）</span><button onclick="resetNameList('SPAC')">恢复默认</button></div>
+          <textarea id="set-spac-names" rows="4" style="width:100%;resize:vertical;"></textarea>
+        </div>
+        <button class="primary" onclick="saveNameLists()">保存命名表修改</button>
+      </div>
+
+      <!-- 等级颜色 -->
+      <div id="stab-colors" style="display:none;flex-direction:column;gap:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="color:var(--text-dim);">自定义 9 个强度等级代表色，实时同步全图与日志</span>
+          <button onclick="resetCategoryColors()">恢复默认配色</button>
+        </div>
+        <div class="color-grid" id="settings-color-grid"></div>
+      </div>
+
+      <!-- BGM 与分级音效 -->
+      <div id="stab-audio" style="display:none;flex-direction:column;gap:10px;">
+        <div class="card">
+          <div class="card-header"><span>背景音乐 (BGM)</span></div>
+          <div class="audio-row">
+            <span id="bgm-status">未载入自定义 BGM</span>
+            <div class="btn-group">
+              <label style="cursor:pointer;"><button type="button" onclick="document.getElementById('bgm-file').click()">上传音频</button><input id="bgm-file" type="file" accept="audio/*" style="display:none;" onchange="loadCustomBgm(event)"></label>
+              <button id="btn-bgm-toggle" onclick="toggleBgm()">▶ 播放</button>
+              <input type="range" id="bgm-vol" min="0" max="1" step="0.05" value="0.35" oninput="setBgmVol(this.value)" style="width:70px;">
+            </div>
+          </div>
+          <label class="check-row"><input type="checkbox" id="chk-sfx-enable" checked onchange="SETTINGS.sfxEnabled = this.checked"> 启用分级登陆与巅峰突破音效（未上传自定义音频时自动使用内置合成音效）</label>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><span>分级登陆音效（8 级独立配置）</span></div>
+          <div id="settings-lf-audio"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><span>巅峰突破音效（5 级独立配置）</span></div>
+          <div id="settings-peak-audio"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 即时更名小窗（无 alert/prompt） -->
+<div class="modal-backdrop" id="rename-modal">
+  <div class="modal-box" style="max-width:340px;">
+    <div class="modal-head"><strong>✏️ 更改气旋名称</strong><button onclick="closeModal('rename-modal')">✕</button></div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:10px;">
+      <input type="text" id="rename-input" placeholder="输入新名称（中英文均可）" style="width:100%;padding:7px;">
+      <div style="display:flex;justify-content:flex-end;gap:6px;">
+        <button onclick="closeModal('rename-modal')">取消</button>
+        <button class="primary" onclick="confirmRenameModal()">确认更名</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+(() => {
+  'use strict';
+
+  /* ==================== 1. 核心常量、等级与 10 级 BD 红外色阶 ==================== */
+  const DEFAULT_CATEGORIES = [
+    { key: 'TD',       label: 'TD',   cn: '热带低压', min: 0,   max: 33,  color: '#60a5fa', iconScale: 0.72 },
+    { key: 'TS',       label: 'TS',   cn: '热带风暴', min: 34,  max: 63,  color: '#34d399', iconScale: 0.88 },
+    { key: 'C1',       label: 'C1',   cn: '一级台风', min: 64,  max: 82,  color: '#fde047', iconScale: 1.02 },
+    { key: 'C2',       label: 'C2',   cn: '二级台风', min: 83,  max: 95,  color: '#fbbf24', iconScale: 1.15 },
+    { key: 'C3',       label: 'C3',   cn: '三级强台', min: 96,  max: 112, color: '#fb923c', iconScale: 1.28 },
+    { key: 'C4',       label: 'C4',   cn: '四级超台', min: 113, max: 136, color: '#ef4444', iconScale: 1.42 },
+    { key: 'C5',       label: 'C5',   cn: '五级超台', min: 137, max: 154, color: '#f43f5e', iconScale: 1.56 },
+    { key: 'SUPER155', label: '顶超', cn: '历史顶超', min: 155, max: 169, color: '#d946ef', iconScale: 1.72 },
+    { key: 'HYPER170', label: '超顶超',cn: '传奇超顶超',min: 170, max: 205, color: '#f0abfc', iconScale: 1.90 }
+  ];
+
+  // v1.5.9 德沃夏克 10 级红外 BD 色阶表（严格自暖至冷：WMG -> WCDG）
+  const BD_CURVE = [
+    { code: 'WMG',  cn: '暖中灰', minT: 9,    maxT: 99,  rgb: [148, 148, 156] }, // > 9°C
+    { code: 'OW',   cn: '灰白',   minT: -30,  maxT: 9,   rgb: [212, 218, 224] }, // -30 ~ 9°C
+    { code: 'DG',   cn: '深灰',   minT: -41,  maxT: -30, rgb: [74,  78,  88]  }, // -41 ~ -31°C
+    { code: 'MG',   cn: '中灰',   minT: -53,  maxT: -41, rgb: [128, 134, 145] }, // -53 ~ -42°C
+    { code: 'LG',   cn: '浅灰',   minT: -63,  maxT: -53, rgb: [188, 194, 204] }, // -63 ~ -54°C
+    { code: 'B',    cn: '黑',     minT: -69,  maxT: -63, rgb: [18,  20,  26]  }, // -69 ~ -64°C
+    { code: 'W',    cn: '白',     minT: -75,  maxT: -69, rgb: [248, 250, 252] }, // -75 ~ -70°C
+    { code: 'CMG',  cn: '冷中灰', minT: -80,  maxT: -75, rgb: [122, 132, 152] }, // -80 ~ -76°C
+    { code: 'CDG',  cn: '冷深灰', minT: -90,  maxT: -80, rgb: [56,  64,  84]  }, // -90 ~ -81°C
+    { code: 'WCDG', cn: '极冷深灰',minT:-130, maxT: -90, rgb: [185, 28,  156] }  // <= -91°C 极冷云顶亮点
+  ];
+
+  const DEFAULT_WNP_NAMES = [
+    '达维','海葵','鸿雁','鸳鸯','小犬','布拉万','三巴','杰拉华','艾云尼','马力斯',
+    '格美','派比安','玛莉亚','山神','安比','悟空','云雀','珊珊','摩羯','丽琵',
+    '贝碧嘉','普拉桑','苏力','西马仑','飞燕','山陀儿','百里嘉','潭美','康妮','银杏',
+    '桃芝','万宜','天兔','帕布','蝴蝶','圣帕','木恩','丹娜丝','百合','韦帕',
+    '范斯高','竹节草','罗莎','白鹿','杨柳','玲玲','剑鱼','蓝湖','琵琶','塔巴',
+    '米娜','桦加沙','浣熊','博罗依','麦德姆','夏浪','娜基莉','风神','海鸥','凤凰',
+    '天琴','洛鞍','望月','海燕','天鹅','莫兰蒂','泰培','威马逊','山竹','利奇马'
+  ];
+
+  const DEFAULT_SPAC_NAMES = [
+    '阿洛','布莱恩','西里尔','达芙妮','埃文','弗雷达','加里','海莉','伊恩','朱恩',
+    '科菲','莉娜','迈克','妮基','奥拉','帕姆','拉奎尔','鲁本','索洛','图尼',
+    '乌拉','维克多','温斯顿','亚萨','扎祖','安娜','比纳','科迪','多维','伊娃',
+    '菲利','吉娜','黑尔','艾琳','朱迪','凯文','洛拉','马尔','纳特','奥赛',
+    '皮塔','雷','塞鲁','塔姆','乌尔米尔','瓦努','瓦西','齐塔','吉塔','哈罗德'
+  ];
+
+  // 10 级环流规模分类
+  const CIRC_TIERS = [
+    { name: '小环流(小)', r: 155, pBias: +11 },
+    { name: '小环流(中)', r: 185, pBias: +8  },
+    { name: '小环流(大)', r: 215, pBias: +5  },
+    { name: '中环流(小)', r: 250, pBias: +2  },
+    { name: '中环流(中)', r: 290, pBias: 0   },
+    { name: '中环流(大)', r: 335, pBias: -3  },
+    { name: '大环流(小)', r: 385, pBias: -7  },
+    { name: '大环流(中)', r: 440, pBias: -11 },
+    { name: '大环流(大)', r: 500, pBias: -15 },
+    { name: '超大环流',   r: 580, pBias: -21 }
+  ];
+
+  /* ==================== 2. 双洋区高精度地理多边形数据 ==================== */
+  const BASINS = {
+    WNP: {
+      id: 'WNP', name: '西北太平洋', term: '台风', spin: 1, spinIcon: '↺',
+      lonMin: 100, lonMax: 180, latMin: 0, latMax: 50,
+      peakMonth: 8,
+      labels: [
+        { t:'中国大陆', lon:113, lat:32 }, { t:'台湾岛', lon:121.0, lat:23.7 },
+        { t:'海南', lon:109.7, lat:19.2 }, { t:'日本列岛', lon:138.5, lat:36.2 },
+        { t:'朝鲜半岛', lon:127.5, lat:37.5 }, { t:'菲律宾', lon:122.5, lat:13.0 },
+        { t:'越南', lon:107.2, lat:15.5 }, { t:'南海', lon:114.5, lat:14.5, sea:true },
+        { t:'菲律宾海', lon:133.0, lat:19.0, sea:true }, { t:'东海', lon:125.0, lat:29.5, sea:true },
+        { t:'马里亚纳群岛', lon:145.2, lat:15.5, sea:true }, { t:'马绍尔群岛', lon:169.0, lat:9.5, sea:true }
+      ],
+      lands: [
+        { name:'中国大陆', pts:[[100,50],[135,50],[141,49],[137,44],[131,42.5],[124.2,39.8],[121.5,38.8],[122.2,40.7],[119.5,40.0],[117.7,39.0],[119.0,37.8],[122.5,37.4],[120.4,36.0],[119.3,34.6],[121.9,31.2],[121.5,29.8],[120.7,27.8],[119.6,25.5],[118.1,24.4],[116.7,23.3],[114.2,22.3],[113.0,21.8],[110.4,20.2],[108.5,21.5],[106.6,20.8],[105.8,19.0],[107.5,16.5],[109.3,13.0],[108.9,11.0],[105.0,8.7],[103.5,10.5],[100.5,13.5],[100,10],[100,50]] },
+        { name:'马来半岛', pts:[[100,10],[101.5,8.0],[103.5,5.0],[104.2,1.4],[102.5,2.0],[100.2,5.5],[100,10]] },
+        { name:'婆罗洲', pts:[[109.0,1.5],[112.0,3.2],[115.2,5.2],[117.5,6.9],[119.2,5.2],[118.0,1.0],[116.0,0],[109.0,0],[109.0,1.5]] },
+        { name:'朝鲜半岛', pts:[[124.2,39.8],[128.5,41.0],[130.6,42.3],[129.4,35.2],[126.5,34.6],[126.2,37.5],[124.2,39.8]] },
+        { name:'台湾岛', pts:[[121.5,25.3],[122.0,24.8],[121.6,23.6],[120.8,21.9],[120.1,23.1],[120.8,24.7],[121.5,25.3]] },
+        { name:'海南岛', pts:[[109.1,19.9],[110.9,20.0],[111.0,18.9],[109.5,18.2],[108.6,19.1],[109.1,19.9]] },
+        { name:'九州', pts:[[130.0,33.9],[131.8,33.2],[131.4,31.3],[130.1,31.4],[129.6,33.0],[130.0,33.9]] },
+        { name:'四国', pts:[[132.4,33.5],[134.6,34.1],[134.1,33.2],[132.7,32.8],[132.4,33.5]] },
+        { name:'本州', pts:[[131.0,34.2],[135.5,34.6],[137.0,34.5],[139.8,35.0],[140.9,36.0],[141.9,39.6],[141.3,41.4],[139.9,40.5],[138.8,37.8],[136.7,37.0],[133.2,35.5],[131.0,34.2]] },
+        { name:'北海道', pts:[[140.0,42.0],[141.5,45.4],[145.6,43.4],[143.5,42.0],[141.0,41.4],[140.0,42.0]] },
+        { name:'库页岛', pts:[[142.0,46.0],[143.5,47.5],[143.2,50.0],[141.8,50.0],[142.0,46.0]] },
+        { name:'吕宋岛', pts:[[120.5,18.5],[122.3,18.4],[122.5,16.2],[123.9,13.3],[122.4,13.5],[120.7,13.8],[119.9,15.8],[120.5,18.5]] },
+        { name:'米沙鄢群岛', pts:[[122.0,11.8],[125.4,12.5],[125.6,10.5],[122.5,9.5],[121.9,10.8],[122.0,11.8]] },
+        { name:'棉兰老岛', pts:[[122.2,7.2],[125.8,9.8],[126.5,7.0],[125.4,5.6],[123.8,6.8],[122.0,6.9],[122.2,7.2]] },
+        { name:'巴拉望', pts:[[117.0,8.4],[119.6,11.3],[119.9,10.8],[117.4,8.2],[117.0,8.4]] },
+        { name:'冲绳岛', pts:[[127.6,26.1],[128.3,26.8],[128.1,26.4],[127.6,26.1]] },
+        { name:'关岛', pts:[[144.65,13.25],[144.95,13.65],[144.85,13.35],[144.65,13.25]] },
+        { name:'塞班岛', pts:[[145.65,15.1],[145.85,15.3],[145.75,15.1],[145.65,15.1]] }
+      ]
+    },
+    SPAC: {
+      id: 'SPAC', name: '南太平洋', term: '气旋', spin: -1, spinIcon: '↻',
+      lonMin: 145, lonMax: 240, latMin: -45, latMax: 0,
+      peakMonth: 2,
+      labels: [
+        { t:'澳大利亚', lon:149.0, lat:-25.5 }, { t:'巴布亚新几内亚', lon:147.8, lat:-7.5 },
+        { t:'新西兰', lon:173.0, lat:-41.0 }, { t:'斐济', lon:178.0, lat:-17.8 },
+        { t:'瓦努阿图', lon:167.5, lat:-16.0 }, { t:'新喀里多尼亚', lon:165.5, lat:-21.4 },
+        { t:'所罗门群岛', lon:160.2, lat:-9.5 }, { t:'萨摩亚', lon:188.0, lat:-13.8 },
+        { t:'汤加', lon:185.0, lat:-21.0 }, { t:'塔希提', lon:210.5, lat:-17.7 },
+        { t:'珊瑚海', lon:156.5, lat:-18.0, sea:true }, { t:'塔斯曼海', lon:161.0, lat:-36.0, sea:true }
+      ],
+      lands: [
+        { name:'澳大利亚东岸', pts:[[145,-12],[145.8,-15.5],[148.8,-20.2],[152.5,-24.8],[153.6,-28.2],[152.0,-32.5],[150.0,-37.5],[145.0,-38.5],[145,-12]] },
+        { name:'塔斯马尼亚', pts:[[145.0,-41.0],[148.3,-41.0],[147.8,-43.4],[145.4,-43.2],[145.0,-41.0]] },
+        { name:'巴布亚新几内亚', pts:[[145,-4.0],[147.5,-6.5],[150.8,-10.3],[148.0,-9.8],[145,-8.0],[145,-4.0]] },
+        { name:'新西兰北岛', pts:[[172.7,-34.4],[178.5,-37.7],[177.2,-39.5],[175.3,-41.5],[173.8,-39.2],[174.5,-36.8],[172.7,-34.4]] },
+        { name:'新西兰南岛', pts:[[172.6,-40.6],[174.3,-41.8],[171.2,-44.5],[167.8,-46.4],[166.5,-45.5],[170.5,-42.8],[172.6,-40.6]] },
+        { name:'新喀里多尼亚', pts:[[164.0,-20.1],[167.0,-22.3],[166.5,-22.6],[163.8,-20.5],[164.0,-20.1]] },
+        { name:'斐济维提岛', pts:[[177.3,-17.5],[178.7,-17.6],[178.5,-18.3],[177.4,-18.1],[177.3,-17.5]] },
+        { name:'瓦努阿图', pts:[[166.6,-14.8],[167.4,-15.6],[168.4,-17.8],[167.9,-17.9],[166.5,-15.5],[166.6,-14.8]] },
+        { name:'所罗门群岛', pts:[[156.5,-7.5],[161.5,-10.0],[160.8,-10.4],[156.0,-8.0],[156.5,-7.5]] },
+        { name:'萨摩亚', pts:[[187.2,-13.6],[188.6,-14.0],[188.3,-14.2],[187.1,-13.8],[187.2,-13.6]] },
+        { name:'塔希提', pts:[[210.2,-17.5],[210.8,-17.8],[210.5,-18.0],[210.1,-17.7],[210.2,-17.5]] }
+      ]
+    }
+  };
+
+  /* ==================== 3. 全局状态与持久化设置 ==================== */
+  const SETTINGS = {
+    categories: JSON.parse(JSON.stringify(DEFAULT_CATEGORIES)),
+    wnpNames: [...DEFAULT_WNP_NAMES],
+    spacNames: [...DEFAULT_SPAC_NAMES],
+    sfxEnabled: true,
+    bgmUrl: null,
+    bgmPlaying: false,
+    bgmVol: 0.35,
+    lfAudio: {},   // key -> objectURL
+    peakAudio: {}  // key -> objectURL
+  };
+
+  try {
+    const saved = JSON.parse(localStorage.getItem('pac_tc_settings_v159') || 'null');
+    if (saved) {
+      if (saved.colors) SETTINGS.categories.forEach(c => { if (saved.colors[c.key]) c.color = saved.colors[c.key]; });
+      if (Array.isArray(saved.wnpNames) && saved.wnpNames.length) SETTINGS.wnpNames = saved.wnpNames;
+      if (Array.isArray(saved.spacNames) && saved.spacNames.length) SETTINGS.spacNames = saved.spacNames;
+    }
+  } catch (e) {}
+
+  function persistSettings() {
+    try {
+      const colors = {};
+      SETTINGS.categories.forEach(c => colors[c.key] = c.color);
+      localStorage.setItem('pac_tc_settings_v159', JSON.stringify({
+        colors, wnpNames: SETTINGS.wnpNames, spacNames: SETTINGS.spacNames
+      }));
+    } catch (e) {}
+  }
+
+  const STATE = {
+    simMs: Date.UTC(2000, 0, 1, 0, 0, 0), // 2000-01-01 00Z
+    speed: 0,           // 0, 1, 2, 3, 5
+    lastSpeed: 1,
+    simAccum: 0,        // 小时累积器（暂停时强制归零，彻底修复3x+暂停Bug）
+    activeBasin: 'WNP',
+    displayMode: 'sat', // 'sat' | 'icon' | 'both'
+    layer: 'BD',        // 'BD' | 'IR' | 'SST' | 'OHC' | 'VWS'
+    showSteering: true,
+    showYearLandfalls: false,
+    ensoMode: 'AUTO',   // 'AUTO' | 'ELNINO' | 'NEUTRAL' | 'LANINA'
+    ensoVal: 0.0,       // -1.5 ~ +1.5
+    clickSpawnMode: false,
+    duckMode: false,
+    selectedStormId: null,
+    highlightArchiveId: null,
+    renameTargetId: null,
+    nextStormUid: 1,
+    basins: {
+      WNP: { nameIdx: 0, namedThisYear: 0, annualAce: 0, storms: [], archive: [], yearLandfalls: [], wake: [] },
+      SPAC:{ nameIdx: 0, namedThisYear: 0, annualAce: 0, storms: [], archive: [], yearLandfalls: [], wake: [] }
+    },
+    news: [],
+    lastYear: 2000,
+    mouse: { inside: false, x: 0, y: 0, lon: 135, lat: 18 },
+    flowPhase: 0,
+    envDirty: true,
+    satDirty: true,
+    lastDomUpdate: 0,
+    lastEnvRender: 0
+  };
+
+  /* ==================== 4. 音频引擎（自定义 BGM + 分级登陆/巅峰音效 + WebAudio 默认合成） ==================== */
+  let audioCtx = null;
+  const bgmAudio = new Audio();
+  bgmAudio.loop = true;
+  bgmAudio.volume = SETTINGS.bgmVol;
+
+  function ensureAudioCtx() {
+    if (!audioCtx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) audioCtx = new AC();
+    }
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+  }
+
+  function playSynthTone(type, tierIdx) {
+    if (!SETTINGS.sfxEnabled) return;
+    try {
+      ensureAudioCtx();
+      if (!audioCtx) return;
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      if (type === 'lf') {
+        const base = 170 + tierIdx * 32;
+        osc.type = tierIdx >= 5 ? 'sawtooth' : 'triangle';
+        osc.frequency.setValueAtTime(base, now);
+        osc.frequency.exponentialRampToValueAtTime(base * 0.55, now + 0.35);
+        gain.gain.setValueAtTime(0.14, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+        osc.start(now); osc.stop(now + 0.4);
+      } else {
+        const base = 330 + tierIdx * 95;
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(base, now);
+        osc.frequency.exponentialRampToValueAtTime(base * 1.5, now + 0.25);
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+        osc.start(now); osc.stop(now + 0.46);
+      }
+    } catch (e) {}
+  }
+
+  function triggerLandfallSfx(catKey) {
+    if (!SETTINGS.sfxEnabled) return;
+    const url = SETTINGS.lfAudio[catKey];
+    if (url) {
+      const a = new Audio(url); a.volume = 0.65; a.play().catch(() => {});
+    } else {
+      const idx = Math.max(0, SETTINGS.categories.findIndex(c => c.key === catKey));
+      playSynthTone('lf', idx);
+    }
+  }
+
+  function triggerPeakSfx(catKey) {
+    if (!SETTINGS.sfxEnabled) return;
+    const url = SETTINGS.peakAudio[catKey];
+    if (url) {
+      const a = new Audio(url); a.volume = 0.7; a.play().catch(() => {});
+    } else {
+      const peakOrder = ['C3','C4','C5','SUPER155','HYPER170'];
+      const idx = Math.max(0, peakOrder.indexOf(catKey));
+      playSynthTone('peak', idx);
+    }
+  }
+
+  /* ==================== 5. 气象换算与辅助函数 ==================== */
+  function getCategory(kt) {
+    for (let i = SETTINGS.categories.length - 1; i >= 0; i--) {
+      if (kt >= SETTINGS.categories[i].min) return SETTINGS.categories[i];
+    }
+    return SETTINGS.categories[0];
+  }
+
+  // CMA 2分钟风速（m/s）与官方定强
+  function calcCMA(v1kt) {
+    const ms = v1kt * 0.514444 * 0.93; // 1m->2m 换算
+    let lvl = '热带低压(TD)';
+    if (ms >= 51.0) lvl = '超强台风(SuperTY)';
+    else if (ms >= 41.5) lvl = '强台风(STY)';
+    else if (ms >= 32.7) lvl = '台风(TY)';
+    else if (ms >= 24.5) lvl = '强热带风暴(STS)';
+    else if (ms >= 17.2) lvl = '热带风暴(TS)';
+    return { ms: Math.round(ms), lvl };
+  }
+
+  // JMA 10分钟风速（kt）与官方定强
+  function calcJMA(v1kt) {
+    const kt10 = Math.round(v1kt * 0.88);
+    let lvl = '热带低压(TD)';
+    if (kt10 >= 105) lvl = '猛烈台风(Violent)';
+    else if (kt10 >= 85) lvl = '非常强台风(VeryStrong)';
+    else if (kt10 >= 64) lvl = '台风(TY)';
+    else if (kt10 >= 48) lvl = '强热带风暴(STS)';
+    else if (kt10 >= 34) lvl = '热带风暴(TS)';
+    return { kt: kt10, lvl };
+  }
+
+  // 10 级 BD 红外色阶查找
+  function getBDInfo(tempC) {
+    for (let i = 0; i < BD_CURVE.length; i++) {
+      if (tempC > BD_CURVE[i].minT) return BD_CURVE[i];
+    }
+    return BD_CURVE[BD_CURVE.length - 1];
+  }
+
+  // 6 大类精细台风眼（小/中眼分大中小）
+  function classifyEye(v1kt, eyeKm, hasEye) {
+    if (!hasEye || v1kt < 58) return { name: '无清晰风眼', sub: '中心云系整合中', pBias: +4 };
+    if (eyeKm < 12) return { name: '极针眼', sub: `${eyeKm.toFixed(0)} km · 极紧凑`, pBias: -9 };
+    if (eyeKm < 22) return { name: '针眼', sub: `${eyeKm.toFixed(0)} km · 高效深压`, pBias: -6 };
+    if (eyeKm < 30) return { name: '小眼(小)', sub: `${eyeKm.toFixed(0)} km`, pBias: -4 };
+    if (eyeKm < 38) return { name: '小眼(中)', sub: `${eyeKm.toFixed(0)} km`, pBias: -2 };
+    if (eyeKm < 46) return { name: '小眼(大)', sub: `${eyeKm.toFixed(0)} km`, pBias: -1 };
+    if (eyeKm < 56) return { name: '中眼(小)', sub: `${eyeKm.toFixed(0)} km`, pBias: 0 };
+    if (eyeKm < 68) return { name: '中眼(中)', sub: `${eyeKm.toFixed(0)} km`, pBias: +1 };
+    if (eyeKm < 82) return { name: '中眼(大)', sub: `${eyeKm.toFixed(0)} km`, pBias: +2 };
+    if (eyeKm < 115) return { name: '大眼', sub: `${eyeKm.toFixed(0)} km · 宽阔`, pBias: +4 };
+    return { name: '巨眼', sub: `${eyeKm.toFixed(0)} km · 巨型眼墙`, pBias: +6 };
+  }
+
+  // 风压耦合公式（校准：中环流中眼 170kt ≈ 887 hPa；超大环流+小/针眼 155kt 可深至 ~880 hPa）
+  function calcPressure(v1kt, circIdx, eyeInfo, lat) {
+    const baseEnv = 1010 - Math.min(4, Math.abs(lat) * 0.08);
+    const windDrop = 0.0156 * Math.pow(Math.max(15, v1kt), 1.725);
+    const circ = CIRC_TIERS[circIdx] || CIRC_TIERS[4];
+    // 环流越大且眼越小，深压红利越明显
+    const synergy = (circIdx >= 6 && eyeInfo.pBias <= -4) ? -6 : 0;
+    const raw = baseEnv - windDrop + circ.pBias + eyeInfo.pBias + synergy;
+    return Math.round(Math.max(858, Math.min(1008, raw)));
+  }
+
+  // 德沃夏克分析（最高 T10.0，含 10 级红外色阶）
+  function calcDvorak(storm) {
+    const v = storm.v1;
+    // 映射到 T1.0 ~ T10.0（170kt≈T8.2, 200kt≈T10.0）
+    let tRaw = 1.0;
+    if (v <= 30) tRaw = 1.0 + (v - 18) * 0.08;
+    else if (v <= 65) tRaw = 2.0 + (v - 30) * 0.057;
+    else if (v <= 140) tRaw = 4.0 + (v - 65) * 0.04;
+    else tRaw = 7.0 + (v - 140) * 0.05;
+    tRaw = Math.max(1.0, Math.min(10.0, tRaw));
+    const dt = Number(tRaw.toFixed(1));
+    const met = Number(Math.max(1.0, Math.min(10.0, tRaw + (storm.dv6h >= 0 ? 0.1 : -0.2))).toFixed(1));
+    const pt = Number(((dt + met) * 0.5).toFixed(1));
+    const ci = Number(Math.max(dt, Math.min(10.0, storm.peakT ? Math.min(storm.peakT, dt + 0.4) : dt)).toFixed(1));
+
+    // 云顶温度（强系统突破 CDG 甚至 WCDG <= -91°C）
+    let cdoT = -42 - Math.min(54, v * 0.275) + (storm.vws * 0.35);
+    if (v >= 168) cdoT -= (v - 165) * 0.25;
+    if (storm.erc && storm.erc.active) cdoT += 5;
+    cdoT = Math.max(-98, Math.min(-25, cdoT));
+
+    let eyeT = storm.hasEye ? (-25 + Math.min(48, (v - 55) * 0.42) - (storm.eyeKm < 18 ? 6 : 0)) : cdoT + 4;
+    eyeT = Math.max(-75, Math.min(26, eyeT));
+
+    return {
+      t: dt, ci, dt, met, pt,
+      cdoT: Math.round(cdoT), cdoBD: getBDInfo(cdoT),
+      eyeT: Math.round(eyeT), eyeBD: getBDInfo(eyeT)
+    };
+  }
+
+  function haversineKm(lon1, lat1, lon2, lat2) {
+    const R = 6371, rad = Math.PI / 180;
+    const dLat = (lat2 - lat1) * rad, dLon = (lon2 - lon1) * rad;
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(dLon / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(Math.min(1, a)));
+  }
+
+  function formatUtc(ms) {
+    const d = new Date(ms);
+    const Y = d.getUTCFullYear();
+    const M = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const D = String(d.getUTCDate()).padStart(2, '0');
+    const H = String(d.getUTCHours()).padStart(2, '0');
+    return `${Y}-${M}-${D} ${H}Z`;
+  }
+
+  function formatLonLat(lon, lat) {
+    const ew = lon <= 180 ? `${lon.toFixed(1)}°E` : `${(360 - lon).toFixed(1)}°W`;
+    const ns = lat >= 0 ? `${lat.toFixed(1)}°N` : `${Math.abs(lat).toFixed(1)}°S`;
+    return `${ns} ${ew}`;
+  }
+
+  /* ==================== 6. 像素级陆地掩膜与底图缓存 ==================== */
+  const MASK_W = 400, MASK_H = 250;
+  const landMasks = {}; // basinId -> { mask: Uint8Array, region: Int16Array }
+
+  function buildLandMask(basinId) {
+    const b = BASINS[basinId];
+    const c = document.createElement('canvas');
+    c.width = MASK_W; c.height = MASK_H;
+    const ctx = c.getContext('2d', { willReadFrequently: true });
+    ctx.clearRect(0, 0, MASK_W, MASK_H);
+
+    const mask = new Uint8Array(MASK_W * MASK_H);
+    const region = new Int16Array(MASK_W * MASK_H).fill(-1);
+
+    b.lands.forEach((land, idx) => {
+      ctx.clearRect(0, 0, MASK_W, MASK_H);
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      land.pts.forEach(([lon, lat], i) => {
+        const x = ((lon - b.lonMin) / (b.lonMax - b.lonMin)) * MASK_W;
+        const y = ((b.latMax - lat) / (b.latMax - b.latMin)) * MASK_H;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      });
+      ctx.closePath();
+      ctx.fill();
+      const data = ctx.getImageData(0, 0, MASK_W, MASK_H).data;
+      for (let i = 0; i < MASK_W * MASK_H; i++) {
+        if (data[i * 4 + 3] > 120) { mask[i] = 1; region[i] = idx; }
+      }
+    });
+    landMasks[basinId] = { mask, region };
+  }
+
+  buildLandMask('WNP');
+  buildLandMask('SPAC');
+
+  function getLandInfo(basinId, lon, lat) {
+    const b = BASINS[basinId];
+    const lm = landMasks[basinId];
+    const x = Math.floor(((lon - b.lonMin) / (b.lonMax - b.lonMin)) * MASK_W);
+    const y = Math.floor(((b.latMax - lat) / (b.latMax - b.latMin)) * MASK_H);
+    if (x < 0 || x >= MASK_W || y < 0 || y >= MASK_H) return { isLand: false, name: '' };
+    const idx = y * MASK_W + x;
+    if (lm.mask[idx]) {
+      const rIdx = lm.region[idx];
+      return { isLand: true, name: rIdx >= 0 ? b.lands[rIdx].name : '陆地' };
+    }
+    return { isLand: false, name: '' };
+  }
+
+  /* ==================== 7. 大气环境场与 ENSO 模型 ==================== */
+  function updateEnso() {
+    const d = new Date(STATE.simMs);
+    const yr = d.getUTCFullYear() + d.getUTCMonth() / 12;
+    if (STATE.ensoMode === 'ELNINO') STATE.ensoVal = 1.25;
+    else if (STATE.ensoMode === 'LANINA') STATE.ensoVal = -1.25;
+    else if (STATE.ensoMode === 'NEUTRAL') STATE.ensoVal = 0.0;
+    else {
+      STATE.ensoVal = Math.sin((yr - 2000) * 1.35) * 1.15 + Math.sin((yr - 2000) * 0.62) * 0.45;
+    }
+    const badge = document.getElementById('enso-badge');
+    if (STATE.ensoVal > 0.5) { badge.textContent = `厄尔尼诺 +${STATE.ensoVal.toFixed(1)}`; badge.style.background = '#fb923c'; }
+    else if (STATE.ensoVal < -0.5) { badge.textContent = `拉尼娜 ${STATE.ensoVal.toFixed(1)}`; badge.style.background = '#38bdf8'; }
+    else { badge.textContent = `中性 ${STATE.ensoVal.toFixed(1)}`; badge.style.background = '#94a3b8'; }
+  }
+
+  function sampleEnvironment(basinId, lon, lat) {
+    const d = new Date(STATE.simMs);
+    const dayOfYear = (d.getUTCMonth() * 30.43 + d.getUTCDate());
+    const enso = STATE.ensoVal;
+    const absLat = Math.abs(lat);
+
+    // 季节相位：WNP 8月下旬最暖，SPAC 2月下旬最暖
+    const seasonWNP = Math.cos(((dayOfYear - 235) / 365) * Math.PI * 2); // +1 夏末, -1 隆冬
+    const season = basinId === 'WNP' ? seasonWNP : -seasonWNP;
+
+    let sst, ohc, vws, uSteer, vSteer;
+
+    if (basinId === 'WNP') {
+      // 修正冬季东南亚/南海低温与强风切，彻底杜绝1月东南亚极强台风 Bug
+      const warmLat = 13 + season * 6.5;
+      const latDrop = Math.pow(Math.max(0, absLat - warmLat) / 26, 1.65) * 15.5;
+      const winterSCSDrop = (season < -0.2 && lon < 123 && lat < 22) ? (Math.abs(season) * 3.8) : 0;
+      const warmPool = Math.exp(-Math.pow((lon - (136 + enso * 12)) / 26, 2)) * 1.4;
+      sst = 28.6 + season * 1.6 + warmPool - latDrop - winterSCSDrop + (lon > 150 ? enso * 0.9 : -enso * 0.25);
+      sst = Math.max(8, Math.min(31.8, sst));
+
+      ohc = Math.max(0, (sst - 25.4) * 24 + (lon > 123 && lon < 158 && lat > 8 && lat < 23 ? 28 : 0) - winterSCSDrop * 12);
+      ohc = Math.min(160, ohc);
+
+      // 风切：冬季整体风切显著增大，高纬西风急流强风切
+      const jetShear = Math.max(0, (absLat - (25 + season * 5)) * 1.35);
+      const winterLowLatShear = season < 0 ? Math.abs(season) * 11.5 : 0;
+      const ensoShear = lon < 135 ? Math.max(0, enso * 4) : Math.max(0, -enso * 5);
+      vws = 7 + jetShear + winterLowLatShear + ensoShear + Math.sin(lon * 0.12 + dayOfYear * 0.03) * 2.5;
+      vws = Math.max(3, Math.min(58, vws));
+
+      // 副高驶流：低纬偏西，24-28°N 转向，高纬偏东加速
+      const ridgeLat = 26 + season * 4.5 - enso * 1.5;
+      uSteer = lat < ridgeLat ? (-9.5 + (lat / ridgeLat) * 4.5) : ((lat - ridgeLat) * 1.25 + 2.0);
+      vSteer = 1.8 + Math.max(0, (lat - 15) * 0.22) + (lon < 126 && lat > 18 ? 1.5 : 0);
+    } else {
+      // 南太平洋 SPAC（南半球镜像）
+      const warmLat = 12 + season * 5.5;
+      const latDrop = Math.pow(Math.max(0, absLat - warmLat) / 25, 1.6) * 15.0;
+      const spczBoost = Math.exp(-Math.pow((lon - (176 + enso * 16)) / 24, 2)) * 1.5;
+      sst = 28.4 + season * 1.7 + spczBoost - latDrop + (lon > 180 ? enso * 1.1 : -enso * 0.3);
+      sst = Math.max(9, Math.min(31.5, sst));
+
+      ohc = Math.max(0, (sst - 25.5) * 23 + (lon > 154 && lon < 198 && absLat > 7 && absLat < 21 ? 22 : 0));
+      ohc = Math.min(145, ohc);
+
+      const jetShear = Math.max(0, (absLat - (23 + season * 5)) * 1.4);
+      const offSeasonShear = season < 0 ? Math.abs(season) * 12 : 0;
+      vws = 8 + jetShear + offSeasonShear + Math.cos(lon * 0.11 + dayOfYear * 0.03) * 2.5;
+      vws = Math.max(4, Math.min(58, vws));
+
+      const ridgeLat = 23 + season * 4.5;
+      uSteer = absLat < ridgeLat ? (-8.0 + (absLat / ridgeLat) * 4.5) : ((absLat - ridgeLat) * 1.2 + 2.2);
+      // 南半球向南（lat 减小，vSteer 为负）
+      vSteer = -(1.8 + Math.max(0, (absLat - 13) * 0.24));
+    }
+
+    // 冷水尾流叠加
+    const wakes = STATE.basins[basinId].wake;
+    for (let i = 0; i < wakes.length; i++) {
+      const w = wakes[i];
+      const d2 = (lon - w.lon) ** 2 + (lat - w.lat) ** 2;
+      if (d2 < 9) {
+        const drop = w.cool * Math.exp(-d2 / 3.2);
+        sst -= drop;
+        ohc = Math.max(0, ohc - drop * 16);
+      }
+    }
+
+    return { sst, ohc, vws, uSteer, vSteer, season };
+  }
+
+  /* ==================== 8. 新闻日志系统 ==================== */
+  function addNews(basinId, type, title, color = '#38bdf8') {
+    const b = BASINS[basinId];
+    const entry = {
+      id: Date.now() + Math.random(),
+      time: formatUtc(STATE.simMs),
+      basinId,
+      basinName: b.name,
+      type,
+      title,
+      color
+    };
+    STATE.news.unshift(entry);
+    if (STATE.news.length > 220) STATE.news.pop();
+
+    const ticker = document.getElementById('news-ticker');
+    ticker.innerHTML = `<span class="news-tag" style="background:${color};color:#040812;">${b.name}</span><span class="tabular" style="color:var(--text-dim);">[${entry.time}]</span><span>${title}</span>`;
+    document.getElementById('news-count').textContent = STATE.news.length;
+
+    if (document.getElementById('news-drawer').classList.contains('open')) {
+      renderNewsDrawer();
+    }
+  }
+
+  function renderNewsDrawer() {
+    const fb = document.getElementById('news-filter-basin').value;
+    const ft = document.getElementById('news-filter-type').value;
+    const box = document.getElementById('news-list');
+    const items = STATE.news.filter(n => (fb === 'ALL' || n.basinId === fb) && (ft === 'ALL' || n.type === ft));
+    if (!items.length) {
+      box.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:16px;">暂无符合条件的气象快讯</div>';
+      return;
+    }
+    box.innerHTML = items.slice(0, 80).map(n => `
+      <div class="news-entry" style="border-left-color:${n.color};">
+        <span class="tabular" style="color:var(--text-muted);flex-shrink:0;">${n.time}</span>
+        <span class="storm-badge" style="background:${n.color};flex-shrink:0;">${n.basinName}</span>
+        <span>${n.title}</span>
+      </div>
+    `).join('');
+  }
+
+  /* ==================== 9. 气旋生成、物理推进与 6H Warm-Core ==================== */
+  function nextBasinName(basinId) {
+    const list = basinId === 'WNP' ? SETTINGS.wnpNames : SETTINGS.spacNames;
+    const bs = STATE.basins[basinId];
+    const nm = list[bs.nameIdx % list.length] || (basinId === 'WNP' ? '新台风' : '新气旋');
+    bs.nameIdx++;
+    return nm;
+  }
+
+  function createStorm(basinId, opts = {}) {
+    const b = BASINS[basinId];
+    const bs = STATE.basins[basinId];
+    const isOuter = !!opts.isOuter;
+    const isDuck = opts.isDuck !== undefined ? opts.isDuck : STATE.duckMode;
+
+    const lon = opts.lon !== undefined ? opts.lon : (basinId === 'WNP' ? 132 + Math.random() * 34 : 162 + Math.random() * 36);
+    const lat = opts.lat !== undefined ? opts.lat : (basinId === 'WNP' ? 7.5 + Math.random() * 11 : -(7.5 + Math.random() * 10));
+
+    // 本地生成严格从 20-28 kt 起步，外洋越界可较强进入
+    const initV = opts.v1 !== undefined ? opts.v1 : (isOuter ? 68 + Math.random() * 48 : 20 + Math.random() * 8);
+    // v1.5 潜质分布：水台更多，C4+更少，但极少数巨兽拥有冲超顶超潜质（+15% 突破加成）
+    const roll = Math.random();
+    let potential = 0.72;
+    if (isDuck) potential = 1.48;
+    else if (roll < 0.48) potential = 0.52 + Math.random() * 0.25;      // 水台偏多
+    else if (roll < 0.80) potential = 0.78 + Math.random() * 0.22;      // C1-C3
+    else if (roll < 0.94) potential = 1.00 + Math.random() * 0.16;      // C4-C5
+    else potential = 1.18 + Math.random() * 0.22;                        // 巨兽苗子
+
+    const circRoll = Math.random();
+    let circIdx = circRoll < 0.28 ? Math.floor(Math.random() * 3)
+                : circRoll < 0.70 ? 3 + Math.floor(Math.random() * 3)
+                : circRoll < 0.94 ? 6 + Math.floor(Math.random() * 3) : 9;
+    if (isDuck && circIdx < 5) circIdx = 5 + Math.floor(Math.random() * 4);
+
+    const id = STATE.nextStormUid++;
+    const year = new Date(STATE.simMs).getUTCFullYear();
+    const storm = {
+      id, basinId, year,
+      name: isOuter ? (opts.name || `${nextBasinName(basinId)}(外洋)`) : `${String(id % 99 || 1).padStart(2,'0')}${basinId === 'WNP' ? 'W' : 'P'}`,
+      named: isOuter,
+      isOuter, isDuck,
+      lon, lat,
+      v1: initV,
+      peakV1: initV,
+      minPres: 1004,
+      peakT: 1.5,
+      circIdx,
+      eyeKm: 28 + Math.random() * 34,
+      hasEye: initV >= 60,
+      ageH: 0,
+      consolidateH: isOuter ? 0 : (12 + Math.random() * 24), // 本地生成12-36H整合期
+      potential,
+      ace: 0,
+      dv6h: 0,
+      prevV6h: initV,
+      vws: 10, sst: 29, ohc: 65,
+      onLand: false,
+      lastLandRegion: '',
+      landfalls: [],
+      highestCatKey: getCategory(initV).key,
+      highestPeakSfxTier: -1,
+      fujiPartnerId: null,
+      erc: { active: false, type: '', timer: 0, boost: 0, cooldown: 36 },
+      etFactor: 0, // 0=纯热带, 1=完全温带变性
+      track: [{ lon, lat, v1: initV, t: STATE.simMs }],
+      bestTrack: [],
+      wcSnap: null,
+      peakWcSnap: null
+    };
+
+    const eyeInfo = classifyEye(storm.v1, storm.eyeKm, storm.hasEye);
+    storm.pres = calcPressure(storm.v1, storm.circIdx, eyeInfo, storm.lat);
+    storm.minPres = storm.pres;
+    storm.dvorak = calcDvorak(storm);
+    storm.wcSnap = computeWarmCore(storm);
+    storm.peakWcSnap = storm.wcSnap;
+
+    bs.storms.push(storm);
+    if (isOuter) {
+      bs.namedThisYear++;
+      addNews(basinId, 'GEN', `🌊 外洋越界${b.term}「${storm.name}」以 ${Math.round(storm.v1)} kt 跨入${b.name}！`, '#38bdf8');
+    } else if (isDuck) {
+      addNews(basinId, 'GEN', `🦆 疯模式系统 ${storm.name} 已在 ${formatLonLat(lon, lat)} 生成，锁定超顶超！`, '#e879f9');
+    }
+
+    if (basinId === STATE.activeBasin && !STATE.selectedStormId) {
+      STATE.selectedStormId = storm.id;
+    }
+    STATE.satDirty = true;
+    return storm;
+  }
+
+  // 每 6 小时 Warm-Core 垂直温度距平模型
+  function computeWarmCore(storm) {
+    const v = storm.v1;
+    const et = storm.etFactor;
+    const peakDelta = Math.max(-2, (v / 11.2) * (1 - et * 1.15) + (storm.hasEye ? 1.8 : 0) - (storm.erc.active ? 1.5 : 0));
+    const peakHpa = et > 0.6 ? 500 : (v > 130 ? 250 : v > 80 ? 300 : 380);
+    const tiltKm = Math.min(95, storm.vws * 2.1 + et * 40);
+    return {
+      time: formatUtc(STATE.simMs),
+      peakDelta: Number(peakDelta.toFixed(1)),
+      peakHpa,
+      tiltKm: Math.round(tiltKm),
+      v1: Math.round(v),
+      etFactor: Number(et.toFixed(2)),
+      radiusKm: CIRC_TIERS[storm.circIdx].r * 0.55
+    };
+  }
+
+  function tryNaturalGenesis(basinId, dtH) {
+    const b = BASINS[basinId];
+    const bs = STATE.basins[basinId];
+    if (bs.storms.length >= 4) return; // 防止同洋区井喷
+
+    const d = new Date(STATE.simMs);
+    const month = d.getUTCMonth() + 1;
+    let seasonWeight = 1.0;
+
+    if (basinId === 'WNP') {
+      // 12月到5月较难生成，7-10月为主高峰，校准全年约 24-30 个命名台风、ACE 260-350
+      const wnpTable = [0, 0.10, 0.08, 0.11, 0.16, 0.28, 0.65, 1.15, 1.55, 1.45, 1.05, 0.55, 0.18];
+      seasonWeight = wnpTable[month];
+    } else {
+      // 南太平洋 11-4月旺季，5-10月淡季
+      const spacTable = [0, 1.25, 1.45, 1.20, 0.65, 0.18, 0.05, 0.03, 0.03, 0.05, 0.15, 0.55, 0.95];
+      seasonWeight = spacTable[month];
+    }
+
+    const ensoBoost = 1 + STATE.ensoVal * 0.12;
+    const baseRatePerHour = basinId === 'WNP' ? 0.0046 : 0.0028;
+    const prob = baseRatePerHour * seasonWeight * ensoBoost * dtH;
+
+    if (Math.random() < prob) {
+      // 尝试在海洋暖区寻找合理生成点
+      for (let tries = 0; tries < 6; tries++) {
+        let lon, lat;
+        if (basinId === 'WNP') {
+          lon = 114 + Math.random() * 52 + STATE.ensoVal * 5;
+          lon = Math.max(109, Math.min(174, lon));
+          lat = 6.5 + Math.random() * (month >= 6 && month <= 10 ? 15 : 6.5);
+          // 冬季禁止在东南亚极低纬强生成
+          if ((month <= 4 || month === 12) && lon < 126 && Math.random() < 0.78) continue;
+        } else {
+          lon = 152 + Math.random() * 54 + STATE.ensoVal * 8;
+          lon = Math.max(150, Math.min(222, lon));
+          lat = -(6.5 + Math.random() * 13);
+        }
+        if (getLandInfo(basinId, lon, lat).isLand) continue;
+        const env = sampleEnvironment(basinId, lon, lat);
+        if (env.sst < 26.5 || env.vws > 24) continue;
+        // 与现有系统保持间距
+        if (bs.storms.some(s => haversineKm(s.lon, s.lat, lon, lat) < 850)) continue;
+        createStorm(basinId, { lon, lat });
+        break;
+      }
+    }
+
+    // 外洋越界台风（WNP 专属，夏秋偶发从 179.5°E 跨入）
+    if (basinId === 'WNP' && month >= 7 && month <= 10 && Math.random() < 0.00028 * dtH * (1 + Math.max(0, STATE.ensoVal) * 0.6)) {
+      createStorm('WNP', { lon: 179.2, lat: 11 + Math.random() * 10, isOuter: true });
+    }
+  }
+
+  function stepBasin(basinId, dtH, isSixHourTick) {
+    const b = BASINS[basinId];
+    const bs = STATE.basins[basinId];
+
+    // 冷水尾流缓慢恢复
+    for (let i = bs.wake.length - 1; i >= 0; i--) {
+      bs.wake[i].cool -= 0.025 * dtH;
+      if (bs.wake[i].cool <= 0.1) bs.wake.splice(i, 1);
+    }
+
+    tryNaturalGenesis(basinId, dtH);
+
+    // 1. 藤原效应相互作用
+    bs.storms.forEach(s => s.fujiPartnerId = null);
+    const mergedIds = new Set();
+    for (let i = 0; i < bs.storms.length; i++) {
+      for (let j = i + 1; j < bs.storms.length; j++) {
+        const a = bs.storms[i], c = bs.storms[j];
+        if (mergedIds.has(a.id) || mergedIds.has(c.id)) continue;
+        const dist = haversineKm(a.lon, a.lat, c.lon, c.lat);
+        if (dist < 1350 && dist > 10) {
+          a.fujiPartnerId = c.id;
+          c.fujiPartnerId = a.id;
+          // 切向互旋（WNP 逆时针 spin=+1，SPAC 顺时针 spin=-1）
+          const dx = c.lon - a.lon, dy = c.lat - a.lat;
+          const norm = Math.hypot(dx, dy) || 1;
+          const strength = ((1350 - dist) / 1350) * 0.22 * dtH;
+          const tx = -dy / norm * b.spin;
+          const ty = dx / norm * b.spin;
+          const wa = c.v1 / (a.v1 + c.v1 + 1);
+          const wc = a.v1 / (a.v1 + c.v1 + 1);
+          a.lon += (tx * strength + (dx / norm) * strength * 0.25) * wa * 2;
+          a.lat += (ty * strength + (dy / norm) * strength * 0.25) * wa * 2;
+          c.lon -= (tx * strength + (dx / norm) * strength * 0.25) * wc * 2;
+          c.lat -= (ty * strength + (dy / norm) * strength * 0.25) * wc * 2;
+
+          // <350 km 强吞弱
+          if (dist < 350) {
+            const strong = a.v1 >= c.v1 ? a : c;
+            const weak = a.v1 >= c.v1 ? c : a;
+            strong.circIdx = Math.min(9, strong.circIdx + 1);
+            strong.v1 = Math.min(200, strong.v1 + weak.v1 * 0.12);
+            mergedIds.add(weak.id);
+            addNews(basinId, 'FUJI', `🌀 藤原吞并！「${strong.name}」在 ${formatLonLat(strong.lon, strong.lat)} 吞并了「${weak.name}」`, '#c084fc');
+          }
+        }
+      }
+    }
+
+    // 2. 逐个系统演进
+    for (let i = bs.storms.length - 1; i >= 0; i--) {
+      const s = bs.storms[i];
+      if (mergedIds.has(s.id)) {
+        archiveStorm(basinId, s, '被藤原吞并');
+        bs.storms.splice(i, 1);
+        continue;
+      }
+
+      s.ageH += dtH;
+      const env = sampleEnvironment(basinId, s.lon, s.lat);
+      s.sst = env.sst; s.ohc = env.ohc; s.vws = env.vws;
+
+      // 🦆 疯模式：提供超级热力泡与达峰前避陆偏转，确保 100% 冲破 170 kt
+      let effSst = env.sst, effOhc = env.ohc, effVws = env.vws;
+      if (s.isDuck && s.peakV1 < 174) {
+        effSst = Math.max(effSst, 31.4);
+        effOhc = Math.max(effOhc, 135);
+        effVws = Math.min(effVws, 4.5);
+      }
+
+      // 移动（驶流 + Beta 漂移）
+      let u = env.uSteer - 1.1;
+      let v = env.vSteer + (b.spin > 0 ? 1.2 : -1.2);
+      if (s.isDuck && s.peakV1 < 174) {
+        // 达峰前检测前方是否即将撞陆，自动偏向暖海
+        const nextLon = s.lon + (u * 0.0145) * 8;
+        const nextLat = s.lat + (v * 0.0145) * 8;
+        if (getLandInfo(basinId, nextLon, nextLat).isLand || Math.abs(nextLat) > 25) {
+          u = Math.abs(u) * 0.35;
+          v = b.spin > 0 ? -1.5 : 1.5;
+        }
+      }
+
+      s.lon += (u * 0.0155) * dtH;
+      s.lat += (v * 0.0155) * dtH;
+
+      // 产生冷水尾流
+      if (s.v1 > 55 && Math.random() < 0.25 * dtH) {
+        bs.wake.push({ lon: s.lon, lat: s.lat, cool: Math.min(2.6, (s.v1 - 40) * 0.022) });
+        if (bs.wake.length > 60) bs.wake.shift();
+      }
+
+      // 登陆判定与分级登陆标记
+      const land = getLandInfo(basinId, s.lon, s.lat);
+      if (land.isLand && !s.onLand) {
+        s.onLand = true;
+        s.lastLandRegion = land.name;
+        const cat = getCategory(s.v1);
+        const lf = {
+          stormId: s.id, stormName: s.name, lon: s.lon, lat: s.lat,
+          v1: Math.round(s.v1), pres: s.pres, catKey: cat.key, catLabel: cat.label,
+          region: land.name, time: formatUtc(STATE.simMs)
+        };
+        s.landfalls.push(lf);
+        bs.yearLandfalls.push(lf);
+        if (s.v1 >= 34) {
+          addNews(basinId, 'LF', `⚠️ ${b.term}「${s.name}」以 ${cat.label}（${Math.round(s.v1)} kt / ${s.pres} hPa）登陆${land.name}！`, cat.color);
+          if (basinId === STATE.activeBasin) triggerLandfallSfx(cat.key);
+        }
+      } else if (!land.isLand) {
+        s.onLand = false;
+      }
+
+      // 温带变性判定
+      const absLat = Math.abs(s.lat);
+      if (absLat > 30 || effSst < 22.5) {
+        s.etFactor = Math.min(1, s.etFactor + (0.018 + Math.max(0, absLat - 30) * 0.004) * dtH);
+      } else {
+        s.etFactor = Math.max(0, s.etFactor - 0.01 * dtH);
+      }
+
+      // 眼墙置换（ERC）：普通65%、快速25%、融合10%（融合置换爆发冲量最强）
+      if (s.erc.cooldown > 0) s.erc.cooldown -= dtH;
+      if (!s.erc.active && !s.onLand && s.v1 >= 105 && s.erc.cooldown <= 0 && effSst > 27.5 && Math.random() < 0.0085 * dtH) {
+        const r = Math.random();
+        if (r < 0.10 || (s.isDuck && r < 0.35)) {
+          s.erc = { active: true, type: '融合置换', timer: 14, boost: 18, cooldown: 42 };
+        } else if (r < 0.35) {
+          s.erc = { active: true, type: '快速置换', timer: 12, boost: 10, cooldown: 38 };
+        } else {
+          s.erc = { active: true, type: '普通置换', timer: 22, boost: 5, cooldown: 48 };
+        }
+        addNews(basinId, 'ERC', `🔄 ${b.term}「${s.name}」启动【${s.erc.type}】！`, '#facc15');
+      }
+
+      let ercRate = 0;
+      if (s.erc.active) {
+        s.erc.timer -= dtH;
+        if (s.erc.timer > 5) {
+          ercRate = s.erc.type === '普通置换' ? -0.75 : -0.35;
+          s.eyeKm = Math.min(115, s.eyeKm + 0.4 * dtH);
+        } else {
+          ercRate = s.erc.boost * 0.16; // 置换完成冲击
+        }
+        if (s.erc.timer <= 0) {
+          s.erc.active = false;
+          s.eyeKm = Math.max(14, s.eyeKm * (s.erc.type === '融合置换' ? 0.62 : 0.80));
+          addNews(basinId, 'ERC', `💥 「${s.name}」完成【${s.erc.type}】，核心重整冲击强度！`, '#f472b6');
+        }
+      }
+
+      // 最大潜在强度（MPI）与 v1.5 强度平衡（水台更多、C4+更少、超顶超+15%突破率）
+      let mpi = 28 + Math.max(0, effSst - 25.0) * 26.5 + Math.min(48, effOhc * 0.38) - Math.max(0, effVws - 8) * 3.1;
+      mpi *= s.potential;
+      if (s.isDuck) mpi = Math.max(mpi, 198);
+      mpi = Math.max(20, Math.min(202, mpi));
+
+      let dvPerHour = 0;
+      if (s.onLand) {
+        dvPerHour = -(2.4 + s.v1 * 0.036);
+      } else if (s.etFactor > 0.55) {
+        dvPerHour = -(1.1 + s.etFactor * 1.4);
+      } else if (s.ageH < s.consolidateH && !s.isDuck) {
+        dvPerHour = (mpi - s.v1) * 0.012; // 初期整合期防止瞬爆
+      } else {
+        const gap = mpi - s.v1;
+        if (gap > 0) {
+          let rate = gap * 0.036;
+          // 快速增强（RI）窗口
+          if (effSst >= 29.0 && effOhc >= 75 && effVws <= 10 && s.v1 >= 45 && s.v1 < 155) {
+            rate *= 1.48;
+          }
+          // C5 (137 kt) 之后每升 5 kt 触发阶梯阻力墙（v1.5 调大 15% 超顶超突破几率）
+          if (s.v1 >= 137 && !s.isDuck) {
+            const steps = Math.floor((s.v1 - 137) / 5);
+            const drag = Math.pow(0.76, steps) * 1.15; // +15% 突破加成
+            rate *= Math.min(1.0, drag);
+          }
+          if (s.isDuck && s.v1 < 176) rate = Math.max(rate, 2.8);
+          dvPerHour = rate;
+        } else {
+          dvPerHour = gap * 0.035;
+        }
+      }
+
+      s.v1 = Math.max(12, Math.min(200, s.v1 + (dvPerHour + ercRate) * dtH));
+      if (s.v1 > s.peakV1) s.peakV1 = s.v1;
+
+      // 风眼演变
+      if (s.v1 >= 60 && !s.onLand && s.etFactor < 0.45) {
+        s.hasEye = true;
+        const targetEye = Math.max(9, Math.min(125, 16 + s.circIdx * 6.5 - (s.v1 - 65) * 0.16));
+        s.eyeKm += (targetEye - s.eyeKm) * 0.03 * dtH;
+      } else if (s.v1 < 50 || s.onLand) {
+        s.hasEye = false;
+      }
+
+      // 达到 34 kt 正式命名
+      if (!s.named && s.v1 >= 34) {
+        s.named = true;
+        s.name = nextBasinName(basinId);
+        bs.namedThisYear++;
+        addNews(basinId, 'GEN', `🌀 ${b.name}新${b.term}「${s.name}」正式命名（${Math.round(s.v1)} kt）`, '#34d399');
+      }
+
+      const eyeInfo = classifyEye(s.v1, s.eyeKm, s.hasEye);
+      s.pres = calcPressure(s.v1, s.circIdx, eyeInfo, s.lat);
+      if (s.pres < s.minPres) s.minPres = s.pres;
+
+      // 等级突破播报与巅峰音效
+      const curCat = getCategory(s.v1);
+      const curIdx = SETTINGS.categories.findIndex(c => c.key === curCat.key);
+      const prevIdx = SETTINGS.categories.findIndex(c => c.key === s.highestCatKey);
+      if (curIdx > prevIdx) {
+        s.highestCatKey = curCat.key;
+        if (curIdx >= 4) { // C3 及以上播报升级
+          addNews(basinId, 'UPG', `🔥 ${b.term}「${s.name}」加强为【${curCat.label} · ${curCat.cn}】(${Math.round(s.v1)} kt / ${s.pres} hPa)`, curCat.color);
+          if (basinId === STATE.activeBasin) triggerPeakSfx(curCat.key);
+        }
+      }
+
+      s.dvorak = calcDvorak(s);
+      if (s.dvorak.t > s.peakT) s.peakT = s.dvorak.t;
+
+      // 严格每 6 小时更新 ACE、Best Track 与 Warm-Core 剖面
+      if (isSixHourTick) {
+        if (s.v1 >= 34 && s.etFactor < 0.75) {
+          const addAce = (s.v1 * s.v1) / 10000;
+          s.ace += addAce;
+          bs.annualAce += addAce;
+        }
+        s.dv6h = Math.round(s.v1 - s.prevV6h);
+        s.prevV6h = s.v1;
+        s.wcSnap = computeWarmCore(s);
+        if (!s.peakWcSnap || s.wcSnap.peakDelta > s.peakWcSnap.peakDelta) {
+          s.peakWcSnap = { ...s.wcSnap };
+        }
+        s.track.push({ lon: s.lon, lat: s.lat, v1: s.v1, t: STATE.simMs });
+        if (s.track.length > 160) s.track.shift();
+
+        const cma = calcCMA(s.v1), jma = calcJMA(s.v1);
+        s.bestTrack.unshift({
+          time: formatUtc(STATE.simMs),
+          lon: s.lon.toFixed(1), lat: s.lat.toFixed(1),
+          v1: Math.round(s.v1), v2: cma.ms, v10: jma.kt,
+          pres: s.pres, t: s.dvorak.t
+        });
+        if (s.bestTrack.length > 90) s.bestTrack.pop();
+      }
+
+      // 消散条件（离开洋区边界、风速衰减过低或过老）
+      const outBounds = s.lon < b.lonMin - 1 || s.lon > b.lonMax + 1 || s.lat < b.latMin - 1 || s.lat > b.latMax + 1;
+      if (outBounds || (s.ageH > 24 && s.v1 < 18) || s.ageH > 460) {
+        archiveStorm(basinId, s, outBounds ? '移出洋区' : '减弱消散');
+        bs.storms.splice(i, 1);
+      }
+    }
+  }
+
+  function archiveStorm(basinId, s, reason) {
+    const bs = STATE.basins[basinId];
+    // 仅归档达到命名或峰值 >= 34 kt 的有价值记录
+    if (s.named || s.peakV1 >= 34) {
+      bs.archive.unshift({
+        id: s.id, basinId, year: s.year, name: s.name,
+        peakV1: Math.round(s.peakV1),
+        minPres: s.minPres,
+        ace: Number(s.ace.toFixed(2)),
+        peakT: Number(s.peakT.toFixed(1)),
+        catKey: getCategory(s.peakV1).key,
+        circName: CIRC_TIERS[s.circIdx].name,
+        isOuter: s.isOuter, isDuck: s.isDuck,
+        landfalls: [...s.landfalls],
+        track: s.track.map(p => ({ lon: p.lon, lat: p.lat, v1: Math.round(p.v1) })),
+        bestTrack: [...s.bestTrack],
+        peakWcSnap: s.peakWcSnap ? { ...s.peakWcSnap } : null,
+        endTime: formatUtc(STATE.simMs),
+        reason
+      });
+      if (bs.archive.length > 500) bs.archive.pop();
+      addNews(basinId, 'GEN', `📉 「${s.name}」${reason}（巅峰 ${Math.round(s.peakV1)} kt / ${s.minPres} hPa / ACE ${s.ace.toFixed(1)}）`, '#94a3b8');
+    }
+    if (STATE.selectedStormId === s.id) {
+      STATE.selectedStormId = bs.storms[0] ? bs.storms[0].id : null;
+    }
+  }
+
+  function advanceSimulation(dtH) {
+    const prevBlock = Math.floor(STATE.simMs / (6 * 3600000));
+    STATE.simMs += dtH * 3600000;
+    const newBlock = Math.floor(STATE.simMs / (6 * 3600000));
+    const isSixHourTick = newBlock > prevBlock;
+
+    const curYear = new Date(STATE.simMs).getUTCFullYear();
+    if (curYear !== STATE.lastYear) {
+      STATE.lastYear = curYear;
+      ['WNP', 'SPAC'].forEach(bid => {
+        STATE.basins[bid].namedThisYear = 0;
+        STATE.basins[bid].annualAce = 0;
+        STATE.basins[bid].yearLandfalls = [];
+      });
+      updateEnso();
+      addNews(STATE.activeBasin, 'GEN', `📅 进入 ${curYear} 年风季！年度统计与登陆标记已重置`, '#38bdf8');
+    }
+
+    stepBasin('WNP', dtH, isSixHourTick);
+    stepBasin('SPAC', dtH, isSixHourTick);
+
+    if (isSixHourTick) {
+      STATE.envDirty = true;
+      updateHistorySelectors();
+    }
+    STATE.satDirty = true;
+  }
+
+  /* ==================== 10. 高性能双离屏画布渲染引擎 ==================== */
+  const mapCanvas = document.getElementById('map-canvas');
+  const mapCtx = mapCanvas.getContext('2d');
+
+  // 离屏静态地理底图（仅 resize 或切换洋区重绘）
+  const baseCanvas = document.createElement('canvas');
+  const baseCtx = baseCanvas.getContext('2d');
+
+  // 离屏像素场缓冲（220×140 极速计算，再平滑放大，保证 5x 速丝滑且绝不阻塞暂停键）
+  const FIELD_W = 220, FIELD_H = 140;
+  const fieldCanvas = document.createElement('canvas');
+  fieldCanvas.width = FIELD_W; fieldCanvas.height = FIELD_H;
+  const fieldCtx = fieldCanvas.getContext('2d');
+  const fieldImg = fieldCtx.createImageData(FIELD_W, FIELD_H);
+
+  let viewW = 800, viewH = 500;
+
+  function lonToX(lon, b) { return ((lon - b.lonMin) / (b.lonMax - b.lonMin)) * viewW; }
+  function latToY(lat, b) { return ((b.latMax - lat) / (b.latMax - b.latMin)) * viewH; }
+  function xyToLonLat(x, y, b) {
+    return {
+      lon: b.lonMin + (x / viewW) * (b.lonMax - b.lonMin),
+      lat: b.latMax - (y / viewH) * (b.latMax - b.latMin)
+    };
+  }
+
+  function resizeMap() {
+    const wrap = document.getElementById('map-wrapper');
+    const rect = wrap.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    viewW = Math.max(200, Math.floor(rect.width));
+    viewH = Math.max(180, Math.floor(rect.height));
+    mapCanvas.width = Math.floor(viewW * dpr);
+    mapCanvas.height = Math.floor(viewH * dpr);
+    mapCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    baseCanvas.width = viewW;
+    baseCanvas.height = viewH;
+    renderBaseMap();
+    STATE.envDirty = true;
+    STATE.satDirty = true;
+  }
+
+  function renderBaseMap() {
+    const b = BASINS[STATE.activeBasin];
+    const g = baseCtx.createLinearGradient(0, 0, 0, viewH);
+    g.addColorStop(0, '#040c1d');
+    g.addColorStop(0.5, '#07152e');
+    g.addColorStop(1, '#041024');
+    baseCtx.fillStyle = g;
+    baseCtx.fillRect(0, 0, viewW, viewH);
+
+    // 经纬网格
+    baseCtx.strokeStyle = 'rgba(56, 189, 248, 0.11)';
+    baseCtx.lineWidth = 1;
+    baseCtx.font = '10px monospace';
+    baseCtx.fillStyle = 'rgba(148, 163, 184, 0.55)';
+    for (let lon = Math.ceil(b.lonMin / 10) * 10; lon <= b.lonMax; lon += 10) {
+      const x = lonToX(lon, b);
+      baseCtx.beginPath(); baseCtx.moveTo(x, 0); baseCtx.lineTo(x, viewH); baseCtx.stroke();
+      const lbl = lon <= 180 ? `${lon}E` : `${360 - lon}W`;
+      baseCtx.fillText(lbl, x + 3, 12);
+    }
+    for (let lat = Math.ceil(b.latMin / 10) * 10; lat <= b.latMax; lat += 10) {
+      const y = latToY(lat, b);
+      baseCtx.beginPath(); baseCtx.moveTo(0, y); baseCtx.lineTo(viewW, y); baseCtx.stroke();
+      const lbl = lat === 0 ? 'EQ' : lat > 0 ? `${lat}N` : `${Math.abs(lat)}S`;
+      baseCtx.fillText(lbl, 4, y - 3);
+    }
+
+    // 陆地填充与海岸线
+    b.lands.forEach(land => {
+      baseCtx.beginPath();
+      land.pts.forEach(([lon, lat], i) => {
+        const x = lonToX(lon, b), y = latToY(lat, b);
+        if (i === 0) baseCtx.moveTo(x, y); else baseCtx.lineTo(x, y);
+      });
+      baseCtx.closePath();
+      baseCtx.fillStyle = '#17281f';
+      baseCtx.fill();
+      baseCtx.strokeStyle = '#3b6e52';
+      baseCtx.lineWidth = 1.2;
+      baseCtx.stroke();
+    });
+
+    // 地名标注
+    baseCtx.font = '10.5px sans-serif';
+    b.labels.forEach(lb => {
+      const x = lonToX(lb.lon, b), y = latToY(lb.lat, b);
+      baseCtx.fillStyle = lb.sea ? 'rgba(125,211,252,0.42)' : 'rgba(203,213,225,0.68)';
+      baseCtx.fillText(lb.t, x - 18, y);
+    });
+  }
+
+  // 生成卫星云图（10 级 BD / IR）或环境场（SST / OHC / VWS）像素缓冲
+  function updateFieldCanvas() {
+    const b = BASINS[STATE.activeBasin];
+    const storms = STATE.basins[STATE.activeBasin].storms;
+    const data = fieldImg.data;
+    const isSat = STATE.layer === 'BD' || STATE.layer === 'IR';
+    const spin = b.spin;
+    const phase = STATE.flowPhase * 1.4;
+
+    for (let py = 0; py < FIELD_H; py++) {
+      const lat = b.latMax - ((py + 0.5) / FIELD_H) * (b.latMax - b.latMin);
+      for (let px = 0; px < FIELD_W; px++) {
+        const lon = b.lonMin + ((px + 0.5) / FIELD_W) * (b.lonMax - b.lonMin);
+        const idx = (py * FIELD_W + px) * 4;
+
+        if (!isSat) {
+          // 环境图仅渲染海洋
+          if (getLandInfo(b.id, lon, lat).isLand) { data[idx + 3] = 0; continue; }
+          const env = sampleEnvironment(b.id, lon, lat);
+          let r = 0, g = 0, bl = 0;
+          if (STATE.layer === 'SST') {
+            const t = Math.max(0, Math.min(1, (env.sst - 18) / 13.5));
+            r = Math.round(t < 0.5 ? t * 180 : 90 + (t - 0.5) * 330);
+            g = Math.round(t < 0.5 ? 80 + t * 320 : 240 - (t - 0.5) * 380);
+            bl = Math.round((1 - t) * 230);
+          } else if (STATE.layer === 'OHC') {
+            const t = Math.max(0, Math.min(1, env.ohc / 130));
+            r = Math.round(30 + t * 225);
+            g = Math.round(t < 0.6 ? 40 + t * 280 : 210 - (t - 0.6) * 420);
+            bl = Math.round(130 - t * 110);
+          } else {
+            const t = Math.max(0, Math.min(1, env.vws / 45));
+            r = Math.round(25 + t * 225);
+            g = Math.round(210 - t * 175);
+            bl = Math.round(120 - t * 100);
+          }
+          data[idx] = r; data[idx + 1] = g; data[idx + 2] = bl; data[idx + 3] = 155;
+        } else {
+          // BD 10级红外 / IR 灰阶卫星云图
+          let bestTemp = 22; // 晴空海面/陆地
+          let cloudAlpha = 0;
+
+          for (let i = 0; i < storms.length; i++) {
+            const s = storms[i];
+            const dLon = lon - s.lon, dLat = lat - s.lat;
+            const distDeg = Math.hypot(dLon, dLat);
+            const maxDeg = (CIRC_TIERS[s.circIdx].r / 111) * 1.45;
+            if (distDeg > maxDeg) continue;
+
+            const angle = Math.atan2(dLat, dLon);
+            const normR = distDeg / maxDeg;
+            // 螺旋云带（北半球逆时针、南半球顺时针）
+            const spiral = Math.sin(angle * 2 - normR * 9.5 * spin - phase * spin + s.id);
+            const spiral2 = Math.cos(angle * 3 - normR * 14 * spin - phase * 1.3 * spin);
+            const coreStrength = Math.exp(-normR * normR * 3.8);
+            const bandStrength = Math.max(0, (1 - normR) * (0.58 + 0.28 * spiral + 0.14 * spiral2));
+
+            let intensity = Math.max(coreStrength, bandStrength);
+            // 挖出精细风眼
+            const eyeDeg = (s.eyeKm / 111) * 0.55;
+            if (s.hasEye && distDeg < eyeDeg) {
+              const eyeRatio = distDeg / Math.max(0.05, eyeDeg);
+              intensity *= (0.18 + 0.82 * eyeRatio * eyeRatio);
+            }
+
+            const minCtt = s.dvorak ? s.dvorak.cdoT : -65;
+            const ctt = 18 - intensity * (18 - minCtt);
+            if (ctt < bestTemp) {
+              bestTemp = ctt;
+              cloudAlpha = Math.max(cloudAlpha, Math.min(242, intensity * 265));
+            }
+          }
+
+          if (cloudAlpha < 18) {
+            data[idx + 3] = 0;
+          } else if (STATE.layer === 'BD') {
+            const bd = getBDInfo(bestTemp);
+            data[idx] = bd.rgb[0]; data[idx + 1] = bd.rgb[1]; data[idx + 2] = bd.rgb[2];
+            data[idx + 3] = Math.round(cloudAlpha);
+          } else {
+            const lum = Math.max(25, Math.min(252, Math.round((20 - bestTemp) * 2.25)));
+            data[idx] = lum; data[idx + 1] = lum; data[idx + 2] = lum + 3;
+            data[idx + 3] = Math.round(cloudAlpha);
+          }
+        }
+      }
+    }
+    fieldCtx.putImageData(fieldImg, 0, 0);
+  }
+
+  function renderMap() {
+    const b = BASINS[STATE.activeBasin];
+    const bs = STATE.basins[STATE.activeBasin];
+
+    mapCtx.clearRect(0, 0, viewW, viewH);
+    mapCtx.drawImage(baseCanvas, 0, 0);
+
+    // 卫星/环境像素层（图标纯模式下隐藏云图但保留非卫星环境层）
+    const showField = (STATE.layer !== 'BD' && STATE.layer !== 'IR') || STATE.displayMode !== 'icon';
+    if (showField) {
+      mapCtx.save();
+      mapCtx.imageSmoothingEnabled = true;
+      mapCtx.drawImage(fieldCanvas, 0, 0, viewW, viewH);
+      mapCtx.restore();
+    }
+
+    // 云图之上重绘细海岸线，保持陆地边界锐利
+    mapCtx.strokeStyle = 'rgba(148, 226, 185, 0.38)';
+    mapCtx.lineWidth = 1;
+    b.lands.forEach(land => {
+      mapCtx.beginPath();
+      land.pts.forEach(([lon, lat], i) => {
+        const x = lonToX(lon, b), y = latToY(lat, b);
+        if (i === 0) mapCtx.moveTo(x, y); else mapCtx.lineTo(x, y);
+      });
+      mapCtx.closePath();
+      mapCtx.stroke();
+    });
+
+    // 动态气候驶流流线
+    if (STATE.showSteering) {
+      mapCtx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
+      mapCtx.lineWidth = 1.1;
+      for (let gx = 0; gx < 12; gx++) {
+        for (let gy = 0; gy < 7; gy++) {
+          const lon = b.lonMin + ((gx + 0.5) / 12) * (b.lonMax - b.lonMin);
+          const lat = b.latMin + ((gy + 0.5) / 7) * (b.latMax - b.latMin);
+          const env = sampleEnvironment(b.id, lon, lat);
+          const x = lonToX(lon, b), y = latToY(lat, b);
+          const dx = env.uSteer * 1.4, dy = -env.vSteer * 1.4;
+          const off = (STATE.flowPhase * 12) % 10;
+          mapCtx.beginPath();
+          mapCtx.moveTo(x + (dx * off) / 20, y + (dy * off) / 20);
+          mapCtx.lineTo(x + dx, y + dy);
+          mapCtx.stroke();
+        }
+      }
+    }
+
+    // 高亮的历史路径
+    if (STATE.highlightArchiveId) {
+      const rec = bs.archive.find(a => a.id === STATE.highlightArchiveId);
+      if (rec && rec.track.length > 1) {
+        drawTrack(rec.track, true);
+      }
+    }
+
+    // 本年历史登陆点（可选开关）
+    if (STATE.showYearLandfalls) {
+      bs.yearLandfalls.forEach(lf => drawLandfallBadge(lf, b, 0.72));
+    }
+
+    // 藤原效应连线
+    const drawnPairs = new Set();
+    bs.storms.forEach(s => {
+      if (s.fujiPartnerId) {
+        const key = [Math.min(s.id, s.fujiPartnerId), Math.max(s.id, s.fujiPartnerId)].join('-');
+        if (!drawnPairs.has(key)) {
+          drawnPairs.add(key);
+          const p = bs.storms.find(o => o.id === s.fujiPartnerId);
+          if (p) {
+            mapCtx.save();
+            mapCtx.setLineDash([5, 4]);
+            mapCtx.strokeStyle = '#e879f9';
+            mapCtx.lineWidth = 1.6;
+            mapCtx.beginPath();
+            mapCtx.moveTo(lonToX(s.lon, b), latToY(s.lat, b));
+            mapCtx.lineTo(lonToX(p.lon, b), latToY(p.lat, b));
+            mapCtx.stroke();
+            mapCtx.restore();
+          }
+        }
+      }
+    });
+
+    // 活跃系统路径、登陆分级标记、图标与标签
+    bs.storms.forEach(s => {
+      drawTrack(s.track, false);
+      // 仅渲染当前仍活跃系统的登陆标记（消散后自动清除，彻底修复残留 Bug）
+      s.landfalls.forEach(lf => drawLandfallBadge(lf, b, 1.0));
+
+      const x = lonToX(s.lon, b), y = latToY(s.lat, b);
+      const cat = getCategory(s.v1);
+      const isSel = s.id === STATE.selectedStormId;
+
+      if (STATE.displayMode !== 'sat') {
+        drawCycloneIcon(x, y, s, cat, b.spin);
+      } else {
+        // 云图模式下绘制精简中心定位环
+        mapCtx.strokeStyle = isSel ? '#ffffff' : cat.color;
+        mapCtx.lineWidth = isSel ? 2 : 1.3;
+        mapCtx.beginPath(); mapCtx.arc(x, y, 7, 0, Math.PI * 2); mapCtx.stroke();
+      }
+
+      if (isSel) {
+        mapCtx.strokeStyle = '#ffffff';
+        mapCtx.setLineDash([4, 3]);
+        mapCtx.lineWidth = 1.5;
+        mapCtx.beginPath(); mapCtx.arc(x, y, 18 * cat.iconScale, 0, Math.PI * 2); mapCtx.stroke();
+        mapCtx.setLineDash([]);
+      }
+
+      // 悬浮标签
+      mapCtx.font = 'bold 11px sans-serif';
+      const label = `${s.name} ${Math.round(s.v1)}kt`;
+      const tw = mapCtx.measureText(label).width;
+      mapCtx.fillStyle = 'rgba(4,8,18,0.82)';
+      mapCtx.fillRect(x + 11, y - 16, tw + 10, 16);
+      mapCtx.strokeStyle = cat.color;
+      mapCtx.lineWidth = 1;
+      mapCtx.strokeRect(x + 11, y - 16, tw + 10, 16);
+      mapCtx.fillStyle = '#f8fafc';
+      mapCtx.fillText(label, x + 16, y - 4);
+    });
+  }
+
+  function drawTrack(track, isHighlight) {
+    const b = BASINS[STATE.activeBasin];
+    if (!track || track.length < 2) return;
+    mapCtx.save();
+    mapCtx.lineWidth = isHighlight ? 3.2 : 2.0;
+    for (let i = 1; i < track.length; i++) {
+      const p0 = track[i - 1], p1 = track[i];
+      const cat = getCategory(p1.v1);
+      mapCtx.strokeStyle = isHighlight ? '#fde047' : cat.color;
+      mapCtx.beginPath();
+      mapCtx.moveTo(lonToX(p0.lon, b), latToY(p0.lat, b));
+      mapCtx.lineTo(lonToX(p1.lon, b), latToY(p1.lat, b));
+      mapCtx.stroke();
+    }
+    mapCtx.restore();
+  }
+
+  function drawCycloneIcon(x, y, s, cat, spin) {
+    const r = 7.5 * cat.iconScale + (s.v1 / 65);
+    mapCtx.save();
+    mapCtx.translate(x, y);
+
+    // 顶超与超顶超专属光环
+    if (cat.key === 'HYPER170') {
+      const pulse = 1 + Math.sin(STATE.flowPhase * 5) * 0.14;
+      mapCtx.strokeStyle = '#ffffff';
+      mapCtx.lineWidth = 2.4;
+      mapCtx.shadowColor = '#e879f9';
+      mapCtx.shadowBlur = 14;
+      mapCtx.beginPath(); mapCtx.arc(0, 0, (r + 5) * pulse, 0, Math.PI * 2); mapCtx.stroke();
+      mapCtx.shadowBlur = 0;
+    } else if (cat.key === 'SUPER155') {
+      mapCtx.strokeStyle = '#facc15';
+      mapCtx.lineWidth = 1.8;
+      mapCtx.beginPath(); mapCtx.arc(0, 0, r + 4, 0, Math.PI * 2); mapCtx.stroke();
+    }
+
+    mapCtx.rotate(-STATE.flowPhase * 2.4 * spin);
+    mapCtx.fillStyle = cat.color;
+    mapCtx.strokeStyle = cat.color;
+    mapCtx.lineWidth = Math.max(2, r * 0.25);
+
+    // 两道旋转螺旋臂（WNP 逆时针、SPAC 顺时针）
+    for (let k = 0; k < 2; k++) {
+      mapCtx.rotate(Math.PI);
+      mapCtx.beginPath();
+      mapCtx.arc(0, -r * 0.55 * spin, r * 0.85, Math.PI * 0.15, Math.PI * 0.88);
+      mapCtx.stroke();
+    }
+
+    // 中心环 / 风眼
+    mapCtx.beginPath();
+    mapCtx.arc(0, 0, r * 0.52, 0, Math.PI * 2);
+    mapCtx.fillStyle = s.hasEye ? '#040812' : cat.color;
+    mapCtx.fill();
+    mapCtx.lineWidth = 2;
+    mapCtx.strokeStyle = cat.key === 'HYPER170' ? '#ffffff' : cat.color;
+    mapCtx.stroke();
+    mapCtx.restore();
+  }
+
+  function drawLandfallBadge(lf, b, alpha) {
+    const x = lonToX(lf.lon, b), y = latToY(lf.lat, b);
+    const cat = SETTINGS.categories.find(c => c.key === lf.catKey) || SETTINGS.categories[0];
+    mapCtx.save();
+    mapCtx.globalAlpha = alpha;
+    mapCtx.fillStyle = cat.color;
+    mapCtx.strokeStyle = '#040812';
+    mapCtx.lineWidth = 1.5;
+    // 菱形/星形分级登陆标
+    mapCtx.beginPath();
+    mapCtx.moveTo(x, y - 6); mapCtx.lineTo(x + 6, y); mapCtx.lineTo(x, y + 6); mapCtx.lineTo(x - 6, y);
+    mapCtx.closePath();
+    mapCtx.fill(); mapCtx.stroke();
+
+    mapCtx.font = 'bold 9.5px monospace';
+    mapCtx.fillStyle = '#fde047';
+    mapCtx.fillText(`L-${lf.catLabel}`, x + 7, y + 3);
+    mapCtx.restore();
+  }
+
+  // Warm-Core 剖面渲染（供右侧面板与台风回顾共用）
+  function drawWarmCoreCanvas(canvas, snap) {
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = '#040812';
+    ctx.fillRect(0, 0, w, h);
+
+    if (!snap) {
+      ctx.fillStyle = '#64748b'; ctx.font = '11px sans-serif';
+      ctx.fillText('暂无 6H Warm-Core 暖心数据', 70, h / 2);
+      return;
+    }
+
+    const padL = 36, padR = 10, padT = 14, padB = 22;
+    const pw = w - padL - padR, ph = h - padT - padB;
+
+    // 绘制温度距平热力图（1000 hPa 底 -> 100 hPa 顶，-300 ~ +300 km）
+    const cols = 48, rows = 28;
+    const cw = pw / cols, ch = ph / rows;
+    for (let r = 0; r < rows; r++) {
+      const hpa = 100 + (r / (rows - 1)) * 900;
+      const zTilt = ((1000 - hpa) / 900) * snap.tiltKm;
+      for (let c = 0; c < cols; c++) {
+        const km = -300 + (c / (cols - 1)) * 600;
+        const dx = (km - zTilt) / Math.max(55, snap.radiusKm);
+        const dz = (hpa - snap.peakHpa) / 210;
+        let dT = snap.peakDelta * Math.exp(-(dx * dx + dz * dz));
+        if (hpa < 150) dT -= 3.5 * (1 - hpa / 150); // 平流层冷盖
+        let col = '#0b152a';
+        if (dT > 12) col = '#fdf4ff';
+        else if (dT > 9) col = '#e879f9';
+        else if (dT > 6) col = '#ef4444';
+        else if (dT > 3.5) col = '#fb923c';
+        else if (dT > 1.5) col = '#facc15';
+        else if (dT > 0.3) col = '#1d4ed8';
+        else if (dT < -1) col = '#0284c7';
+        ctx.fillStyle = col;
+        ctx.fillRect(padL + c * cw, padT + r * ch, cw + 0.6, ch + 0.6);
+      }
+    }
+
+    // 坐标轴与标尺
+    ctx.strokeStyle = 'rgba(148,163,184,0.45)';
+    ctx.strokeRect(padL, padT, pw, ph);
+    ctx.fillStyle = '#94a3b8'; ctx.font = '9px monospace';
+    [100, 300, 500, 700, 1000].forEach(p => {
+      const y = padT + ((p - 100) / 900) * ph;
+      ctx.fillText(`${p}`, 4, y + 3);
+    });
+    ['-300', '0km', '+300'].forEach((t, i) => {
+      const x = padL + (i / 2) * pw - (i === 2 ? 22 : i === 1 ? 10 : 0);
+      ctx.fillText(t, x, h - 6);
+    });
+  }
+
+  /* ==================== 11. UI 同步与右侧遥测更新 ==================== */
+  function initBDLegend() {
+    const bar = document.getElementById('bd-bar');
+    bar.innerHTML = BD_CURVE.map(b => `<div class="bd-seg" style="background:rgb(${b.rgb.join(',')});" title="${b.code} ${b.cn}"></div>`).join('');
+  }
+
+  function updateUI() {
+    const b = BASINS[STATE.activeBasin];
+    const bs = STATE.basins[STATE.activeBasin];
+
+    document.getElementById('sim-clock').textContent = formatUtc(STATE.simMs);
+    document.getElementById('left-basin-title').textContent = `${b.name} · 年度统计`;
+    document.getElementById('active-list-title').textContent = `当前活跃${b.term}`;
+    document.getElementById('stat-named').textContent = bs.namedThisYear;
+    document.getElementById('stat-ace').textContent = bs.annualAce.toFixed(1);
+    document.getElementById('active-count').textContent = bs.storms.length;
+    document.getElementById('hud-basin-info').textContent = `${b.name} · ${b.spin > 0 ? '逆时针 ↺' : '顺时针 ↻'} · ${new Date(STATE.simMs).getUTCFullYear()} 季`;
+    document.getElementById('btn-outer-spawn').style.display = STATE.activeBasin === 'WNP' ? 'block' : 'none';
+    document.getElementById('bd-legend').style.display = STATE.layer === 'BD' ? 'flex' : 'none';
+
+    // 活跃列表
+    const listEl = document.getElementById('active-storm-list');
+    if (!bs.storms.length) {
+      listEl.innerHTML = `<div style="color:var(--text-muted);text-align:center;padding:8px 0;">当前洋区无活跃${b.term}</div>`;
+    } else {
+      listEl.innerHTML = bs.storms.map(s => {
+        const cat = getCategory(s.v1);
+        const sel = s.id === STATE.selectedStormId ? 'selected' : '';
+        return `
+          <div class="storm-item ${sel}" onclick="selectStorm(${s.id})">
+            <div>
+              <div style="font-weight:700;">${s.name} ${s.isDuck ? '🦆' : ''}</div>
+              <div class="tabular" style="font-size:10px;color:var(--text-dim);">${Math.round(s.v1)} kt · ${s.pres} hPa</div>
+            </div>
+            <span class="storm-badge" style="background:${cat.color};">${cat.label}</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // 选中气旋遥测
+    const s = bs.storms.find(x => x.id === STATE.selectedStormId) || bs.storms[0] || null;
+    if (s && s.id !== STATE.selectedStormId) STATE.selectedStormId = s.id;
+
+    const emptyEl = document.getElementById('live-empty');
+    const panelEl = document.getElementById('live-panel');
+    if (!s) {
+      emptyEl.style.display = 'block';
+      panelEl.style.display = 'none';
+      drawWarmCoreCanvas(document.getElementById('wc-canvas'), null);
+      document.getElementById('bt-tbody').innerHTML = '';
+      return;
+    }
+
+    emptyEl.style.display = 'none';
+    panelEl.style.display = 'flex';
+
+    const cat = getCategory(s.v1);
+    const cma = calcCMA(s.v1), jma = calcJMA(s.v1);
+    const eyeInfo = classifyEye(s.v1, s.eyeKm, s.hasEye);
+    const dv = s.dvorak || calcDvorak(s);
+
+    document.getElementById('sel-name').textContent = s.name;
+    const badge = document.getElementById('sel-cat-badge');
+    badge.textContent = `${cat.label} · ${cat.cn}`;
+    badge.style.background = cat.color;
+
+    document.getElementById('sel-meta').textContent = `${formatLonLat(s.lon, s.lat)} · 存活 ${Math.round(s.ageH)}h · 峰值 ${Math.round(s.peakV1)} kt / ${s.minPres} hPa`;
+
+    const tags = [];
+    if (s.isOuter) tags.push('<span class="chip">🌊 外洋越界</span>');
+    if (s.isDuck) tags.push('<span class="chip" style="border-color:#e879f9;color:#f0abfc;">🦆 疯模式</span>');
+    if (s.fujiPartnerId) tags.push('<span class="chip" style="border-color:#c084fc;color:#e9d5ff;">🌀 藤原互旋中</span>');
+    if (s.onLand) tags.push(`<span class="chip" style="border-color:#fb923c;color:#fed7aa;">⛰️ 陆上(${s.lastLandRegion})</span>`);
+    if (s.etFactor > 0.4) tags.push(`<span class="chip">❄️ 变性 ${Math.round(s.etFactor * 100)}%</span>`);
+    document.getElementById('sel-tags').innerHTML = tags.join('');
+
+    document.getElementById('sel-trend').textContent = `6H变化: ${s.dv6h >= 0 ? '+' : ''}${s.dv6h} kt`;
+    document.getElementById('sel-v1').textContent = `${Math.round(s.v1)} kt`;
+    document.getElementById('sel-v2').textContent = `${cma.ms} m/s`;
+    document.getElementById('sel-cma-lvl').textContent = cma.lvl;
+    document.getElementById('sel-v10').textContent = `${jma.kt} kt`;
+    document.getElementById('sel-jma-lvl').textContent = jma.lvl;
+
+    document.getElementById('sel-pres').textContent = `${s.pres} hPa`;
+    document.getElementById('sel-pres-note').textContent = `历史最低 ${s.minPres} hPa`;
+    document.getElementById('sel-circ').textContent = CIRC_TIERS[s.circIdx].name;
+    document.getElementById('sel-ace-storm').textContent = `累计 ACE: ${s.ace.toFixed(2)}`;
+
+    document.getElementById('sel-eye').textContent = eyeInfo.name;
+    document.getElementById('sel-eye-km').textContent = eyeInfo.sub;
+    document.getElementById('sel-erc').textContent = s.erc.active ? s.erc.type : '无置换';
+    document.getElementById('sel-erc-sub').textContent = s.erc.active ? `剩余 ${Math.max(0, Math.ceil(s.erc.timer))}h` : '眼墙稳定';
+
+    document.getElementById('dv-ci-badge').textContent = `CI ${dv.ci.toFixed(1)}`;
+    document.getElementById('dv-tci').textContent = `T${dv.t.toFixed(1)} / CI ${dv.ci.toFixed(1)} (峰 T${s.peakT.toFixed(1)})`;
+    document.getElementById('dv-sub').textContent = `DT ${dv.dt} · MET ${dv.met} · PT ${dv.pt}`;
+    document.getElementById('dv-cdo').innerHTML = `${dv.cdoT}°C <span class="storm-badge" style="background:rgb(${dv.cdoBD.rgb.join(',')});color:${dv.cdoBD.code==='B'||dv.cdoBD.code==='CDG'||dv.cdoBD.code==='DG'?'#fff':'#040812'};">${dv.cdoBD.code} ${dv.cdoBD.cn}</span>`;
+    document.getElementById('dv-eye-temp').innerHTML = `${dv.eyeT}°C <span class="storm-badge" style="background:rgb(${dv.eyeBD.rgb.join(',')});color:${dv.eyeBD.code==='B'||dv.eyeBD.code==='CDG'||dv.eyeBD.code==='DG'?'#fff':'#040812'};">${dv.eyeBD.code}</span>`;
+    document.getElementById('dv-env').textContent = `${s.sst.toFixed(1)}°C / ${Math.round(s.ohc)} / ${s.vws.toFixed(1)}kt`;
+
+    // Warm-Core 面板与 6H 表格
+    if (s.wcSnap) {
+      document.getElementById('wc-time').textContent = s.wcSnap.time;
+      document.getElementById('wc-peak').textContent = `+${s.wcSnap.peakDelta}°C @ ${s.wcSnap.peakHpa} hPa`;
+      document.getElementById('wc-tilt').textContent = `倾斜 ${s.wcSnap.tiltKm}km · ${s.etFactor > 0.55 ? '冷心变性' : '暖心结构'}`;
+      drawWarmCoreCanvas(document.getElementById('wc-canvas'), s.wcSnap);
+    }
+    document.getElementById('bt-tbody').innerHTML = s.bestTrack.slice(0, 20).map(r => `
+      <tr><td>${r.time.slice(5)}</td><td>${r.lat}/${r.lon}</td><td>${r.v1}/${r.v2}m/${r.v10}</td><td>${r.pres}</td><td>T${r.t}</td></tr>
+    `).join('');
+  }
+
+  function updateProbeHUD() {
+    const hud = document.getElementById('probe-hud');
+    if (!STATE.mouse.inside) return;
+    const b = BASINS[STATE.activeBasin];
+    const { lon, lat } = STATE.mouse;
+    const land = getLandInfo(b.id, lon, lat);
+    const env = sampleEnvironment(b.id, lon, lat);
+
+    // 估算鼠标处云顶温度
+    let ctt = 22;
+    STATE.basins[b.id].storms.forEach(s => {
+      const dist = Math.hypot(lon - s.lon, lat - s.lat);
+      const maxD = (CIRC_TIERS[s.circIdx].r / 111) * 1.45;
+      if (dist < maxD) {
+        const t = 18 - Math.exp(-Math.pow(dist / maxD, 2) * 3.5) * (18 - (s.dvorak ? s.dvorak.cdoT : -65));
+        if (t < ctt) ctt = t;
+      }
+    });
+    const bd = getBDInfo(ctt);
+    const cttStr = ctt < 12 ? `${Math.round(ctt)}°C (${bd.code})` : '晴空';
+
+    hud.innerHTML = `
+      <span>${formatLonLat(lon, lat)}</span>
+      <span>${land.isLand ? '⛰️ ' + land.name : `SST ${env.sst.toFixed(1)}°C · OHC ${Math.round(env.ohc)}`}</span>
+      <span>风切 ${env.vws.toFixed(1)}kt</span>
+      <span>云顶 ${cttStr}</span>
+    `;
+  }
+
+  /* ==================== 12. 历史年鉴与独立回顾页面 ==================== */
+  function updateHistorySelectors() {
+    const bs = STATE.basins[STATE.activeBasin];
+    const yrs = [...new Set(bs.archive.map(a => a.year))].sort((a, b) => b - a);
+    const sel = document.getElementById('hist-year-sel');
+    const prev = sel.value;
+    sel.innerHTML = yrs.length ? yrs.map(y => `<option value="${y}">${y}年</option>`).join('') : '<option value="">暂无年份</option>';
+    if (yrs.includes(Number(prev))) sel.value = prev;
+    renderHistoryTab();
+  }
+
+  function renderHistoryTab() {
+    const bs = STATE.basins[STATE.activeBasin];
+    const yr = Number(document.getElementById('hist-year-sel').value);
+    const kingBox = document.getElementById('hist-year-king');
+    const yrList = bs.archive.filter(a => a.year === yr).sort((a, b) => b.peakV1 - a.peakV1);
+
+    if (!yrList.length) {
+      kingBox.innerHTML = '<div style="color:var(--text-muted);">该年份暂无已消散的历史记录</div>';
+    } else {
+      const k = yrList[0];
+      const cat = getCategory(k.peakV1);
+      kingBox.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+          <strong style="font-size:13.5px;color:#f8fafc;">👑 ${k.year} ${k.name}</strong>
+          <span class="storm-badge" style="background:${cat.color};">${cat.label}</span>
+        </div>
+        <div class="tabular" style="margin-bottom:6px;">巅峰 ${k.peakV1} kt · 气压 ${k.minPres} hPa · T${k.peakT} · ACE ${k.ace}</div>
+        <div class="btn-group">
+          <button onclick="highlightArchiveTrack(${k.id})">📍 地图高亮路径</button>
+          <button onclick="openReviewModal(null, ${k.id})">🔍 查看完整档案</button>
+        </div>
+      `;
+    }
+
+    const top10 = [...bs.archive].sort((a, b) => b.peakV1 - a.peakV1).slice(0, 10);
+    document.getElementById('hist-top10').innerHTML = top10.length
+      ? top10.map((a, i) => `<tr style="cursor:pointer;" onclick="highlightArchiveTrack(${a.id})"><td>${i+1}</td><td>${a.year} ${a.name}</td><td>${a.peakV1}</td><td>${a.minPres}</td><td>${a.ace}</td></tr>`).join('')
+      : '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">暂无历史记录</td></tr>';
+  }
+
+  window.highlightArchiveTrack = function(id) {
+    STATE.highlightArchiveId = id;
+    document.getElementById('hud-hist-track').style.display = 'block';
+    showToast('已在地图高亮该历史台风路径');
+  };
+
+  window.clearHighlightTrack = function() {
+    STATE.highlightArchiveId = null;
+    document.getElementById('hud-hist-track').style.display = 'none';
+  };
+
+  window.openReviewModal = function(btn, focusId) {
+    if (btn) btn.blur();
+    const all = [...STATE.basins.WNP.archive, ...STATE.basins.SPAC.archive];
+    const yrs = [...new Set(all.map(a => a.year))].sort((a, b) => b - a);
+    const ySel = document.getElementById('rev-year');
+    ySel.innerHTML = '<option value="ALL">全部年份</option>' + yrs.map(y => `<option value="${y}">${y}年</option>`).join('');
+    document.getElementById('review-modal').classList.add('open');
+    renderReviewModal(focusId);
+  };
+
+  window.renderReviewModal = function(focusId) {
+    const fb = document.getElementById('rev-basin').value;
+    const fy = document.getElementById('rev-year').value;
+    const fs = document.getElementById('rev-sort').value;
+
+    let list = [...STATE.basins.WNP.archive, ...STATE.basins.SPAC.archive];
+    if (fb !== 'ALL') list = list.filter(a => a.basinId === fb);
+    if (fy !== 'ALL') list = list.filter(a => a.year === Number(fy));
+
+    if (fs === 'wind') list.sort((a, b) => b.peakV1 - a.peakV1);
+    else if (fs === 'pres') list.sort((a, b) => a.minPres - b.minPres);
+    else if (fs === 'ace') list.sort((a, b) => b.ace - a.ace);
+    else list.sort((a, b) => b.id - a.id);
+
+    const listEl = document.getElementById('rev-list');
+    if (!list.length) {
+      listEl.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:24px;">暂无已消散的历史档案（运行模拟待系统消散后自动归档）</div>';
+      document.getElementById('rev-detail').innerHTML = '';
+      return;
+    }
+
+    listEl.innerHTML = list.map(a => {
+      const cat = getCategory(a.peakV1);
+      return `
+        <div class="storm-item" onclick="showReviewDetail(${a.id})">
+          <div>
+            <div style="font-weight:700;">${a.year} ${a.name} <span style="font-size:10px;color:var(--text-muted);">(${BASINS[a.basinId].name})</span></div>
+            <div class="tabular" style="font-size:10px;color:var(--text-dim);">${a.peakV1} kt · ${a.minPres} hPa · ACE ${a.ace}</div>
+          </div>
+          <span class="storm-badge" style="background:${cat.color};">${cat.label}</span>
+        </div>
+      `;
+    }).join('');
+
+    showReviewDetail(focusId || list[0].id);
+  };
+
+  window.showReviewDetail = function(id) {
+    const all = [...STATE.basins.WNP.archive, ...STATE.basins.SPAC.archive];
+    const a = all.find(x => x.id === id);
+    if (!a) return;
+    const cat = getCategory(a.peakV1);
+    const cma = calcCMA(a.peakV1), jma = calcJMA(a.peakV1);
+    const box = document.getElementById('rev-detail');
+
+    box.innerHTML = `
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <h3 style="font-size:16px;">${a.year} ${a.name}（${BASINS[a.basinId].name}）</h3>
+          <span class="storm-badge" style="background:${cat.color};font-size:11px;">${cat.label} · ${cat.cn}</span>
+        </div>
+        <div class="stat-grid-3" style="margin-top:8px;">
+          <div class="stat-box"><div class="stat-label">峰值风速 (1m/2m/10m)</div><div class="stat-val">${a.peakV1}kt / ${cma.ms}m/s / ${jma.kt}kt</div></div>
+          <div class="stat-box"><div class="stat-label">最低气压 / 环流</div><div class="stat-val">${a.minPres} hPa</div><div class="stat-sub">${a.circName}</div></div>
+          <div class="stat-box"><div class="stat-label">ACE / 峰值 T 指数</div><div class="stat-val">${a.ace} / T${a.peakT}</div><div class="stat-sub">结局: ${a.reason}</div></div>
+        </div>
+        <div style="margin-top:6px;font-size:11px;color:var(--text-dim);">
+          登陆记录：${a.landfalls.length ? a.landfalls.map(l => `${l.region}(${l.catLabel} ${l.v1}kt)`).join('、') : '全程未登陆'}
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div class="card">
+          <div class="card-header"><span>巅峰路径回放</span></div>
+          <canvas id="rev-track-cv" width="280" height="170" style="width:100%;height:170px;background:#040812;border-radius:6px;"></canvas>
+        </div>
+        <div class="card">
+          <div class="card-header"><span>巅峰 Warm-Core 暖心快照</span></div>
+          <canvas id="rev-wc-cv" width="280" height="170" style="width:100%;height:170px;background:#040812;border-radius:6px;"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span>6H Best Track 完整报文</span></div>
+        <div style="max-height:160px;overflow-y:auto;">
+          <table class="data-table">
+            <thead><tr><th>UTC</th><th>经纬</th><th>1m / 2m / 10m</th><th>气压</th><th>T</th></tr></thead>
+            <tbody>${a.bestTrack.map(r => `<tr><td>${r.time}</td><td>${r.lat}, ${r.lon}</td><td>${r.v1}kt / ${r.v2}m/s / ${r.v10}kt</td><td>${r.pres}</td><td>T${r.t}</td></tr>`).join('')}</tbody>
+          </table>
+        </div>
+      </div>
+    `;
+
+    // 绘制小路径图与巅峰暖心图
+    drawWarmCoreCanvas(document.getElementById('rev-wc-cv'), a.peakWcSnap);
+    const tcv = document.getElementById('rev-track-cv');
+    const tctx = tcv.getContext('2d');
+    const b = BASINS[a.basinId];
+    tctx.fillStyle = '#050d1e'; tctx.fillRect(0, 0, tcv.width, tcv.height);
+    tctx.fillStyle = '#193024';
+    b.lands.forEach(l => {
+      tctx.beginPath();
+      l.pts.forEach(([lo, la], i) => {
+        const x = ((lo - b.lonMin) / (b.lonMax - b.lonMin)) * tcv.width;
+        const y = ((b.latMax - la) / (b.latMax - b.latMin)) * tcv.height;
+        if (i === 0) tctx.moveTo(x, y); else tctx.lineTo(x, y);
+      });
+      tctx.closePath(); tctx.fill();
+    });
+    for (let i = 1; i < a.track.length; i++) {
+      const p0 = a.track[i - 1], p1 = a.track[i];
+      tctx.strokeStyle = getCategory(p1.v1).color;
+      tctx.lineWidth = 2.2;
+      tctx.beginPath();
+      tctx.moveTo(((p0.lon - b.lonMin) / (b.lonMax - b.lonMin)) * tcv.width, ((b.latMax - p0.lat) / (b.latMax - b.latMin)) * tcv.height);
+      tctx.lineTo(((p1.lon - b.lonMin) / (b.lonMax - b.lonMin)) * tcv.width, ((b.latMax - p1.lat) / (b.latMax - b.latMin)) * tcv.height);
+      tctx.stroke();
+    }
+  };
+
+  /* ==================== 13. 设置中心（更名、颜色、BGM 与分级音效） ==================== */
+  window.openSettingsModal = function(btn) {
+    if (btn) btn.blur();
+    document.getElementById('settings-modal').classList.add('open');
+    renderSettingsPanel();
+  };
+
+  window.switchSettingsTab = function(tab, btn) {
+    ['names','colors','audio'].forEach(t => {
+      document.getElementById(`stab-${t}`).style.display = t === tab ? 'flex' : 'none';
+      document.getElementById(`stab-btn-${t}`).classList.toggle('active', t === tab);
+    });
+    if (btn) btn.blur();
+  };
+
+  function renderSettingsPanel() {
+    // 活跃系统即时更名列表
+    const allActive = [...STATE.basins.WNP.storms, ...STATE.basins.SPAC.storms];
+    const actBox = document.getElementById('settings-active-rename');
+    actBox.innerHTML = allActive.length ? allActive.map(s => `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
+        <span>${BASINS[s.basinId].name} · <strong>${s.name}</strong> (${Math.round(s.v1)} kt)</span>
+        <button onclick="openRenameModal(${s.id})">✏️ 改名</button>
+      </div>
+    `).join('') : '<span style="color:var(--text-muted);">当前无活跃系统</span>';
+
+    document.getElementById('set-wnp-names').value = SETTINGS.wnpNames.join('，');
+    document.getElementById('set-spac-names').value = SETTINGS.spacNames.join('，');
+
+    // 9 级颜色
+    document.getElementById('settings-color-grid').innerHTML = SETTINGS.categories.map(c => `
+      <div class="color-item">
+        <span><strong>${c.label}</strong> (${c.cn})</span>
+        <input type="color" value="${c.color}" onchange="updateCategoryColor('${c.key}', this.value)" style="width:36px;height:24px;border:none;background:none;cursor:pointer;">
+      </div>
+    `).join('');
+
+    // 8 级登陆音效（TS ~ 超顶超）
+    const lfCats = SETTINGS.categories.slice(1);
+    document.getElementById('settings-lf-audio').innerHTML = lfCats.map(c => `
+      <div class="audio-row">
+        <span><span class="storm-badge" style="background:${c.color};">${c.label}</span> 登陆音效 ${SETTINGS.lfAudio[c.key] ? '✅ 已自定义' : '(内置合成)'}</span>
+        <div class="btn-group">
+          <button onclick="document.getElementById('lf-file-${c.key}').click()">上传</button>
+          <input id="lf-file-${c.key}" type="file" accept="audio/*" style="display:none;" onchange="loadTierAudio('lf','${c.key}',event)">
+          <button onclick="triggerLandfallSfx('${c.key}')">▶ 试听</button>
+        </div>
+      </div>
+    `).join('');
+
+    // 5 级巅峰突破音效（C3 ~ 超顶超）
+    const pkCats = SETTINGS.categories.slice(4);
+    document.getElementById('settings-peak-audio').innerHTML = pkCats.map(c => `
+      <div class="audio-row">
+        <span><span class="storm-badge" style="background:${c.color};">${c.label}</span> 巅峰音效 ${SETTINGS.peakAudio[c.key] ? '✅ 已自定义' : '(内置合成)'}</span>
+        <div class="btn-group">
+          <button onclick="document.getElementById('pk-file-${c.key}').click()">上传</button>
+          <input id="pk-file-${c.key}" type="file" accept="audio/*" style="display:none;" onchange="loadTierAudio('peak','${c.key}',event)">
+          <button onclick="triggerPeakSfx('${c.key}')">▶ 试听</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  window.updateCategoryColor = function(key, val) {
+    const c = SETTINGS.categories.find(x => x.key === key);
+    if (c) { c.color = val; persistSettings(); updateUI(); }
+  };
+
+  window.resetCategoryColors = function() {
+    DEFAULT_CATEGORIES.forEach((dc, i) => SETTINGS.categories[i].color = dc.color);
+    persistSettings(); renderSettingsPanel(); updateUI(); showToast('已恢复默认等级颜色');
+  };
+
+  window.saveNameLists = function() {
+    const parse = str => str.split(/[,，、\s\n]+/).map(s => s.trim()).filter(Boolean);
+    const w = parse(document.getElementById('set-wnp-names').value);
+    const s = parse(document.getElementById('set-spac-names').value);
+    if (w.length) SETTINGS.wnpNames = w;
+    if (s.length) SETTINGS.spacNames = s;
+    persistSettings();
+    showToast('双洋区自定义命名表已保存');
+  };
+
+  window.resetNameList = function(bid) {
+    if (bid === 'WNP') SETTINGS.wnpNames = [...DEFAULT_WNP_NAMES];
+    else SETTINGS.spacNames = [...DEFAULT_SPAC_NAMES];
+    persistSettings(); renderSettingsPanel(); showToast('已恢复默认命名表');
+  };
+
+  window.loadCustomBgm = function(ev) {
+    const f = ev.target.files[0]; if (!f) return;
+    if (SETTINGS.bgmUrl) URL.revokeObjectURL(SETTINGS.bgmUrl);
+    SETTINGS.bgmUrl = URL.createObjectURL(f);
+    bgmAudio.src = SETTINGS.bgmUrl;
+    document.getElementById('bgm-status').textContent = `🎵 ${f.name}`;
+    bgmAudio.play().then(() => {
+      SETTINGS.bgmPlaying = true;
+      document.getElementById('btn-bgm-toggle').textContent = '⏸ 暂停';
+    }).catch(() => {});
+  };
+
+  window.toggleBgm = function() {
+    if (!SETTINGS.bgmUrl) { showToast('请先上传一个本地音频作为 BGM'); return; }
+    if (SETTINGS.bgmPlaying) {
+      bgmAudio.pause(); SETTINGS.bgmPlaying = false;
+      document.getElementById('btn-bgm-toggle').textContent = '▶ 播放';
+    } else {
+      bgmAudio.play().catch(() => {}); SETTINGS.bgmPlaying = true;
+      document.getElementById('btn-bgm-toggle').textContent = '⏸ 暂停';
+    }
+  };
+
+  window.setBgmVol = function(v) { SETTINGS.bgmVol = Number(v); bgmAudio.volume = SETTINGS.bgmVol; };
+
+  window.loadTierAudio = function(kind, key, ev) {
+    const f = ev.target.files[0]; if (!f) return;
+    const map = kind === 'lf' ? SETTINGS.lfAudio : SETTINGS.peakAudio;
+    if (map[key]) URL.revokeObjectURL(map[key]);
+    map[key] = URL.createObjectURL(f);
+    renderSettingsPanel();
+    showToast(`已载入 ${key} 自定义音效`);
+  };
+
+  window.promptRenameSelected = function(btn) {
+    if (btn) btn.blur();
+    if (STATE.selectedStormId) openRenameModal(STATE.selectedStormId);
+  };
+
+  window.openRenameModal = function(stormId) {
+    const all = [...STATE.basins.WNP.storms, ...STATE.basins.SPAC.storms];
+    const s = all.find(x => x.id === stormId);
+    if (!s) return;
+    STATE.renameTargetId = stormId;
+    const inp = document.getElementById('rename-input');
+    inp.value = s.name;
+    document.getElementById('rename-modal').classList.add('open');
+    setTimeout(() => inp.focus(), 30);
+  };
+
+  window.confirmRenameModal = function() {
+    const val = document.getElementById('rename-input').value.trim();
+    if (!val) return;
+    const all = [...STATE.basins.WNP.storms, ...STATE.basins.SPAC.storms];
+    const s = all.find(x => x.id === STATE.renameTargetId);
+    if (s) {
+      const old = s.name;
+      s.name = val; s.named = true;
+      addNews(s.basinId, 'GEN', `✏️ 系统「${old}」已手动更名为「${val}」`, '#38bdf8');
+      updateUI();
+      if (document.getElementById('settings-modal').classList.contains('open')) renderSettingsPanel();
+    }
+    closeModal('rename-modal');
+  };
+
+  /* ==================== 14. 交互控制、存档导入导出与实验室工具 ==================== */
+  window.setSpeed = function(spd, btn) {
+    if (btn) btn.blur(); // 防止按钮持有焦点导致按 Space 键双触发
+    STATE.speed = spd;
+    if (spd > 0) STATE.lastSpeed = spd;
+    else STATE.simAccum = 0; // 暂停时立刻清空步长累积器，彻底根治 3x+ 无法暂停 Bug
+
+    [0, 1, 2, 3, 5].forEach(s => {
+      const el = document.getElementById(`btn-spd-${s}`);
+      if (el) el.classList.toggle('active', s === spd);
+    });
+  };
+
+  window.stepSixHours = function(btn) {
+    if (btn) btn.blur();
+    setSpeed(0);
+    for (let i = 0; i < 6; i++) advanceSimulation(1);
+    updateUI();
+  };
+
+  window.switchBasin = function(bid, btn) {
+    if (btn) btn.blur();
+    if (STATE.activeBasin === bid) return;
+    STATE.activeBasin = bid;
+    STATE.selectedStormId = STATE.basins[bid].storms[0] ? STATE.basins[bid].storms[0].id : null;
+    STATE.highlightArchiveId = null;
+    document.getElementById('hud-hist-track').style.display = 'none';
+
+    document.getElementById('btn-basin-wnp').className = 'basin-btn' + (bid === 'WNP' ? ' wnp-active' : '');
+    document.getElementById('btn-basin-spac').className = 'basin-btn' + (bid === 'SPAC' ? ' spac-active' : '');
+    renderBaseMap();
+    STATE.envDirty = true; STATE.satDirty = true;
+    updateHistorySelectors();
+    updateUI();
+    showToast(`已切换至 ${BASINS[bid].name}（${BASINS[bid].spin > 0 ? '逆时针台风' : '顺时针气旋'}）`);
+  };
+
+  window.setDisplayMode = function(mode, btn) {
+    if (btn) btn.blur();
+    STATE.displayMode = mode;
+    ['sat','icon','both'].forEach(m => document.getElementById(`btn-disp-${m}`).classList.toggle('active', m === mode));
+  };
+
+  window.setLayer = function(lyr, btn) {
+    if (btn) btn.blur();
+    STATE.layer = lyr;
+    ['bd','ir','sst','ohc','vws'].forEach(k => document.getElementById(`lyr-${k}`).classList.toggle('active', k.toUpperCase() === lyr));
+    STATE.envDirty = true; STATE.satDirty = true;
+    updateUI();
+  };
+
+  window.toggleFlag = function(key, val) { STATE[key] = val; };
+  window.setEnsoMode = function(val) { STATE.ensoMode = val; updateEnso(); STATE.envDirty = true; };
+
+  window.switchRightTab = function(tab, btn) {
+    if (btn) btn.blur();
+    ['live','wc','hist'].forEach(t => {
+      document.getElementById(`rtab-${t}`).classList.toggle('active', t === tab);
+      document.getElementById(`rtab-btn-${t}`).classList.toggle('active', t === tab);
+    });
+    if (tab === 'hist') updateHistorySelectors();
+    if (tab === 'wc') updateUI();
+  };
+
+  window.selectStorm = function(id) {
+    STATE.selectedStormId = id;
+    updateUI();
+  };
+
+  window.toggleLabBox = function() {
+    const body = document.getElementById('lab-body');
+    const open = body.style.display !== 'none';
+    body.style.display = open ? 'none' : 'flex';
+    document.getElementById('lab-arrow').textContent = open ? '▶' : '▼';
+  };
+
+  window.jumpPeakSeason = function(btn) {
+    if (btn) btn.blur();
+    const d = new Date(STATE.simMs);
+    const targetM = BASINS[STATE.activeBasin].peakMonth - 1;
+    let y = d.getUTCFullYear();
+    if (d.getUTCMonth() > targetM) y++;
+    STATE.simMs = Date.UTC(y, targetM, 10, 0, 0, 0);
+    STATE.lastYear = y;
+    updateEnso();
+    STATE.envDirty = true;
+    updateUI();
+    showToast(`已跳转至 ${y} 年 ${targetM + 1} 月旺季`);
+  };
+
+  window.toggleClickSpawn = function(btn) {
+    if (btn) btn.blur();
+    STATE.clickSpawnMode = !STATE.clickSpawnMode;
+    document.getElementById('btn-click-spawn').classList.toggle('active', STATE.clickSpawnMode);
+    document.getElementById('hud-click-spawn').style.display = STATE.clickSpawnMode ? 'block' : 'none';
+  };
+
+  window.toggleDuckMode = function(btn) {
+    if (btn) btn.blur();
+    STATE.duckMode = !STATE.duckMode;
+    const el = document.getElementById('btn-duck-mode');
+    el.textContent = STATE.duckMode ? '🦆 疯模式：已开启 (100% ≥170kt)' : '🦆 疯模式：关闭';
+    el.classList.toggle('danger-active', STATE.duckMode);
+    document.getElementById('hud-duck-banner').style.display = STATE.duckMode ? 'block' : 'none';
+  };
+
+  window.spawnDuckMonster = function(btn) {
+    if (btn) btn.blur();
+    const bid = STATE.activeBasin;
+    const lon = bid === 'WNP' ? 142 : 176;
+    const lat = bid === 'WNP' ? 13.5 : -13.5;
+    const s = createStorm(bid, { lon, lat, v1: 36, isDuck: true });
+    STATE.selectedStormId = s.id;
+    updateUI();
+    showToast('🦆 已召唤疯模式巨兽（100% 冲破超顶超）');
+  };
+
+  window.spawnFujiwharaPair = function(btn) {
+    if (btn) btn.blur();
+    const bid = STATE.activeBasin;
+    const baseLon = bid === 'WNP' ? 137 : 172;
+    const baseLat = bid === 'WNP' ? 17 : -15;
+    const s1 = createStorm(bid, { lon: baseLon - 4.2, lat: baseLat, v1: 72 });
+    createStorm(bid, { lon: baseLon + 4.2, lat: baseLat + (bid === 'WNP' ? 1.5 : -1.5), v1: 58 });
+    STATE.selectedStormId = s1.id;
+    updateUI();
+    showToast('🌀 已生成藤原效应双气旋系统');
+  };
+
+  window.spawnOuterStorm = function(btn) {
+    if (btn) btn.blur();
+    if (STATE.activeBasin !== 'WNP') switchBasin('WNP');
+    const s = createStorm('WNP', { lon: 179.0, lat: 14 + Math.random() * 6, isOuter: true });
+    STATE.selectedStormId = s.id;
+    updateUI();
+  };
+
+  window.toggleNewsDrawer = function(btn) {
+    if (btn) btn.blur();
+    const dr = document.getElementById('news-drawer');
+    dr.classList.toggle('open');
+    if (dr.classList.contains('open')) renderNewsDrawer();
+  };
+
+  window.clearNewsLog = function() {
+    STATE.news = [];
+    document.getElementById('news-count').textContent = '0';
+    renderNewsDrawer();
+  };
+
+  window.openStartModal = function(btn) { if (btn) btn.blur(); document.getElementById('start-modal').classList.add('open'); };
+  window.closeModal = function(id) { document.getElementById(id).classList.remove('open'); };
+
+  window.startOrResumeSim = function() {
+    closeModal('start-modal');
+    if (STATE.speed === 0) setSpeed(1);
+    showToast('模拟已启动 · 按 Space 随时暂停');
+  };
+
+  window.exportSave = function(btn) {
+    if (btn) btn.blur();
+    const payload = {
+      version: '1.5.9.3',
+      simMs: STATE.simMs,
+      activeBasin: STATE.activeBasin,
+      ensoMode: STATE.ensoMode,
+      nextStormUid: STATE.nextStormUid,
+      basins: STATE.basins,
+      news: STATE.news.slice(0, 80)
+    };
+    const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `pacific_tc_save_${formatUtc(STATE.simMs).replace(/[: ]/g, '_')}.json`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    showToast('💾 已导出 JSON 存档');
+  };
+
+  window.triggerImportSave = function() { document.getElementById('save-file-input').click(); };
+
+  window.handleImportSave = function(ev) {
+    const f = ev.target.files[0]; if (!f) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const data = JSON.parse(e.target.result);
+        if (!data.basins || !data.basins.WNP || !data.basins.SPAC) throw new Error('无效存档');
+        STATE.simMs = data.simMs || STATE.simMs;
+        STATE.lastYear = new Date(STATE.simMs).getUTCFullYear();
+        STATE.ensoMode = data.ensoMode || 'AUTO';
+        STATE.nextStormUid = data.nextStormUid || 100;
+        STATE.basins = data.basins;
+        STATE.news = data.news || [];
+        document.getElementById('enso-select').value = STATE.ensoMode;
+        updateEnso();
+        switchBasin(data.activeBasin || 'WNP');
+        closeModal('start-modal');
+        updateUI();
+        showToast('📂 存档导入成功！');
+      } catch (err) {
+        showToast('❌ 存档解析失败，请确认文件格式');
+      }
+    };
+    reader.readAsText(f);
+    ev.target.value = '';
+  };
+
+  let toastTimer = null;
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
+  }
+
+  /* ==================== 15. 地图鼠标事件与全局快捷键 ==================== */
+  mapCanvas.addEventListener('mousemove', e => {
+    const rect = mapCanvas.getBoundingClientRect();
+    const x = e.clientX - rect.left, y = e.clientY - rect.top;
+    const b = BASINS[STATE.activeBasin];
+    const ll = xyToLonLat(x, y, b);
+    STATE.mouse = { inside: true, x, y, lon: ll.lon, lat: ll.lat };
+    updateProbeHUD();
+  });
+
+  mapCanvas.addEventListener('mouseleave', () => { STATE.mouse.inside = false; });
+
+  mapCanvas.addEventListener('contextmenu', e => {
+    if (STATE.clickSpawnMode) { e.preventDefault(); toggleClickSpawn(); }
+  });
+
+  mapCanvas.addEventListener('click', e => {
+    const rect = mapCanvas.getBoundingClientRect();
+    const x = e.clientX - rect.left, y = e.clientY - rect.top;
+    const b = BASINS[STATE.activeBasin];
+    const { lon, lat } = xyToLonLat(x, y, b);
+
+    if (STATE.clickSpawnMode) {
+      if (getLandInfo(b.id, lon, lat).isLand) {
+        showToast('⚠️ 陆地位置无法生成台风，请点击海洋区域');
+        return;
+      }
+      const s = createStorm(b.id, { lon, lat });
+      STATE.selectedStormId = s.id;
+      updateUI();
+      showToast(`🌀 已在 ${formatLonLat(lon, lat)} 生成新系统`);
+      return;
+    }
+
+    // 否则点击选中最近的活跃气旋
+    let best = null, bestDist = 34;
+    STATE.basins[b.id].storms.forEach(s => {
+      const d = Math.hypot(lonToX(s.lon, b) - x, latToY(s.lat, b) - y);
+      if (d < bestDist) { bestDist = d; best = s; }
+    });
+    if (best) {
+      STATE.selectedStormId = best.id;
+      updateUI();
+    }
+  });
+
+  window.addEventListener('keydown', e => {
+    const tag = (e.target && e.target.tagName) || '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+    if (e.code === 'Space') {
+      e.preventDefault(); // 彻底阻止页面滑动与误触发按钮
+      setSpeed(STATE.speed === 0 ? STATE.lastSpeed : 0);
+    } else if (e.key === '1') setSpeed(1);
+    else if (e.key === '2') setSpeed(2);
+    else if (e.key === '3') setSpeed(3);
+    else if (e.key === '5') setSpeed(5);
+    else if (e.key === 'ArrowRight' || e.key === '.') stepSixHours();
+    else if (e.key.toLowerCase() === 'b') switchBasin(STATE.activeBasin === 'WNP' ? 'SPAC' : 'WNP');
+    else if (e.key.toLowerCase() === 'm') {
+      const order = ['sat', 'icon', 'both'];
+      setDisplayMode(order[(order.indexOf(STATE.displayMode) + 1) % 3]);
+    } else if (e.key.toLowerCase() === 'n') toggleNewsDrawer();
+    else if (e.key.toLowerCase() === 'c') toggleClickSpawn();
+    else if (e.key.toLowerCase() === 'r') openReviewModal();
+    else if (e.key.toLowerCase() === 's') exportSave();
+    else if (e.key === 'Escape') {
+      if (STATE.clickSpawnMode) toggleClickSpawn();
+      ['review-modal', 'settings-modal', 'rename-modal', 'start-modal'].forEach(closeModal);
+    }
+  });
+
+  /* ==================== 16. 主循环（防卡死限幅步进 + 离屏节流） ==================== */
+  let lastFrameMs = performance.now();
+
+  function mainLoop(now) {
+    const dtSec = Math.min(0.08, (now - lastFrameMs) / 1000); // 严控单帧最大 dt 防止加速死锁
+    lastFrameMs = now;
+
+    STATE.flowPhase += dtSec * (STATE.speed > 0 ? 1 + STATE.speed * 0.25 : 0.45);
+
+    if (STATE.speed > 0) {
+      // 1x≈6h/s, 2x≈12h/s, 3x≈20h/s, 5x≈36h/s
+      const hoursPerSec = [0, 6, 12, 20, 28, 36][STATE.speed] || 6;
+      STATE.simAccum += dtSec * hoursPerSec;
+
+      let steps = 0;
+      const maxStepsPerFrame = 8; // 限幅，确保主线程始终响应暂停点击与按键
+      while (STATE.simAccum >= 1 && steps < maxStepsPerFrame) {
+        advanceSimulation(1);
+        STATE.simAccum -= 1;
+        steps++;
+      }
+      if (STATE.simAccum > 12) STATE.simAccum = 12;
+    }
+
+    // 像素场节流更新（每 110ms 最多更新一次，流畅且极低 CPU 占用）
+    if ((STATE.envDirty || STATE.satDirty) && now - STATE.lastEnvRender > 110) {
+      updateFieldCanvas();
+      STATE.envDirty = false;
+      STATE.satDirty = false;
+      STATE.lastEnvRender = now;
+    }
+
+    renderMap();
+
+    // 高频 DOM 节流更新（每 160ms 刷新一次侧边栏数字）
+    if (now - STATE.lastDomUpdate > 160) {
+      updateUI();
+      STATE.lastDomUpdate = now;
+    }
+
+    requestAnimationFrame(mainLoop);
+  }
+
+  /* ==================== 17. 初始化启动 ==================== */
+  window.addEventListener('load', () => {
+    initBDLegend();
+    updateEnso();
+    resizeMap();
+    new ResizeObserver(() => resizeMap()).observe(document.getElementById('map-wrapper'));
+    updateFieldCanvas();
+    updateUI();
+    requestAnimationFrame(mainLoop);
+  });
+})();
+</script>
+</body>
+</html>
